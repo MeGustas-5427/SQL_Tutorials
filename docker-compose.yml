@@ -1,0 +1,24 @@
+version: '3.7'
+
+services:
+
+  db_mysql:
+    image: mysql:latest
+    container_name: sql-mysql
+    restart: always
+    privileged: true
+    ports:
+      - "3306:3306"
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: KRvx2ZD8
+      MYSQL_DATABASE: sql_tutorials_db
+    command:
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+      # mysql 服务一定要加 --default-authentication-plugin=mysql_native_password 命令。
+      # 因为从 MySQL 8.0 开始，默认的加密规则使用的是 caching_sha2_password，而我们的客户端并不支持。
+      # 之前使用的是 mysql_native_password, 相关文章:https://juejin.im/post/6854573209958907917
+    volumes:
+      - ./db_data:/var/lib/mysql
