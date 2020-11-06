@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "tutorials.create_table.apps.CreateTableConfig",
     "tutorials.class_2.apps.Class2Config",
+    "tutorials.class_3.apps.Class3Config",
 ]
 
 MIDDLEWARE = [

@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 # __author__ = '__MeGustas__'
 
+
 from django.test import TestCase
 from django.db import connection
 
@@ -26,7 +27,6 @@ class TestSQL(TestCase):
             cursor.execute("INSERT INTO Customers(cust_id, cust_name, cust_address, cust_city, cust_state, cust_zip, cust_country, cust_contact) \
             VALUES('1000000005', 'The Toy Store', '4545 53rd Street', 'Chicago', 'IL', '54545', 'USA', 'Kim Howard');")
 
-
             # Populate Vendors table
             cursor.execute("INSERT INTO Vendors(vend_id, vend_name, vend_address, vend_city, vend_state, vend_zip, vend_country) \
             VALUES('BRS01','Bears R Us','123 Main Street','Bear Town','MI','44444', 'USA');")
@@ -40,7 +40,6 @@ class TestSQL(TestCase):
             VALUES('FNG01','Fun and Games','42 Galaxy Road','London', NULL,'N16 6PS', 'England');")
             cursor.execute("INSERT INTO Vendors(vend_id, vend_name, vend_address, vend_city, vend_state, vend_zip, vend_country) \
             VALUES('JTS01','Jouets et ours','1 Rue Amusement','Paris', NULL,'45678', 'France');")
-
 
             # Populate Products table
             cursor.execute("INSERT INTO Products(prod_id, vend_id, prod_name, prod_price, prod_desc) \
@@ -62,7 +61,6 @@ class TestSQL(TestCase):
             cursor.execute("INSERT INTO Products(prod_id, vend_id, prod_name, prod_price, prod_desc) \
             VALUES('RYL02', 'FNG01', 'Queen doll', 9.49, '12 inch queen doll with royal garments and crown');")
 
-
             # Populate Orders table
             cursor.execute("INSERT INTO Orders(order_num, order_date, cust_id) \
             VALUES(20005, '2020-05-01', '1000000001');")
@@ -74,7 +72,6 @@ class TestSQL(TestCase):
             VALUES(20008, '2020-02-03', '1000000005');")
             cursor.execute("INSERT INTO Orders(order_num, order_date, cust_id) \
             VALUES(20009, '2020-02-08', '1000000001');")
-
 
             # Populate OrderItems table
             cursor.execute("INSERT INTO OrderItems(order_num, order_item, prod_id, quantity, item_price) \
@@ -122,141 +119,222 @@ class TestSQL(TestCase):
         OrderItems.objects.all().delete()
         Products.objects.all().delete()
 
-    # 2.2 检索单个列
-    def test_select_single_column(self):
+    # 3.1 排序数据
+    def test_sort_data(self):
+        """
+        子句:
+        SQL语句由子句构成,有些子句是必需的,有些则是可选的.一个子句通常由一个关键字加上所提供的数据组成.
+        子句的例子有SELECT语句的FROM子句.
+
+        注意: ORDER BY 子句的位置
+        在指定一条ORDER BY 子句时,应该保证它是SELECT 语句中最后一条子句.如果它不是最后的子句, 报错
+
+        提示: 通过非选择列进行排序
+        通常,ORDER BY 子句中使用的列将是为显示而选择的列.但是,实际上并不是一定要这样,用非见搜的列排序
+        数据是完全ok的.
+        """
         with connection.cursor() as cursor:
-            cursor.execute("SELECT prod_name FROM Products;")
-            for result in dictfetchall(cursor): # 读取所有
+            cursor.execute("SELECT prod_name FROM Products ORDER BY prod_name;")
+            for result in dictfetchall(cursor):  # 读取所有
                 print(result)
                 """
-                {'prod_name': 'Fish bean bag toy'}
-                {'prod_name': 'Bird bean bag toy'}
-                {'prod_name': 'Rabbit bean bag toy'}
-                {'prod_name': '8 inch teddy bear'}
                 {'prod_name': '12 inch teddy bear'}
                 {'prod_name': '18 inch teddy bear'}
-                {'prod_name': 'Raggedy Ann'}
+                {'prod_name': '8 inch teddy bear'}
+                {'prod_name': 'Bird bean bag toy'}
+                {'prod_name': 'Fish bean bag toy'}
                 {'prod_name': 'King doll'}
                 {'prod_name': 'Queen doll'}
+                {'prod_name': 'Rabbit bean bag toy'}
+                {'prod_name': 'Raggedy Ann'}
                 """
 
-    # 2.3 检索多个列
-    def test_select_multiple_column(self):
+    # 3.2 按多个列排序
+    def test_multiple_column_sort_data(self):
         with connection.cursor() as cursor:
-            cursor.execute("SELECT prod_id, prod_name, prod_price FROM Products;")
-            for result in namedtuplefetchall(cursor): # 读取所有
-                print(result.prod_id, result.prod_name, result.prod_price)
-                """
+            cursor.execute("""
+            SELECT 
+            prod_id, prod_price, prod_name 
+            FROM 
+            Products 
+            ORDER BY 
+            prod_price, prod_name;
+            """)
+            for result in dictfetchall(cursor):  # 读取所有
                 print(result)
-                Result(prod_id='BNBG01', prod_name='Fish bean bag toy', prod_price=Decimal('3.49'))
-                Result(prod_id='BNBG02', prod_name='Bird bean bag toy', prod_price=Decimal('3.49'))
-                Result(prod_id='BNBG03', prod_name='Rabbit bean bag toy', prod_price=Decimal('3.49'))
-                Result(prod_id='BR01', prod_name='8 inch teddy bear', prod_price=Decimal('5.99'))
-                Result(prod_id='BR02', prod_name='12 inch teddy bear', prod_price=Decimal('8.99'))
-                Result(prod_id='BR03', prod_name='18 inch teddy bear', prod_price=Decimal('11.99'))
-                Result(prod_id='RGAN01', prod_name='Raggedy Ann', prod_price=Decimal('4.99'))
-                Result(prod_id='RYL01', prod_name='King doll', prod_price=Decimal('9.49'))
-                Result(prod_id='RYL02', prod_name='Queen doll', prod_price=Decimal('9.49'))
+                """
+                {'prod_id': 'BNBG01', 'prod_price': Decimal('3.49'), 'prod_name': 'Fish bean bag toy'}
+                {'prod_id': 'BNBG03', 'prod_price': Decimal('3.49'), 'prod_name': 'Rabbit bean bag toy'}
+                {'prod_id': 'RGAN01', 'prod_price': Decimal('4.99'), 'prod_name': 'Raggedy Ann'}
+                {'prod_id': 'BR01', 'prod_price': Decimal('5.99'), 'prod_name': '8 inch teddy bear'}
+                {'prod_id': 'BR02', 'prod_price': Decimal('8.99'), 'prod_name': '12 inch teddy bear'}
+                {'prod_id': 'RYL01', 'prod_price': Decimal('9.49'), 'prod_name': 'King doll'}
+                {'prod_id': 'RYL02', 'prod_price': Decimal('9.49'), 'prod_name': 'Queen doll'}
+                {'prod_id': 'BR03', 'prod_price': Decimal('11.99'), 'prod_name': '18 inch teddy bear'}
                 """
 
-    # 2.4 检索所有列
-    def test_select_all_column(self):
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM Products;")
-            # 注意: 检索不需要的列通常会降低检索速度和应用程序的性能
-            for result in namedtuplefetchall(cursor): # 读取所有
-                print(result)
-                """
-                Result(prod_id='BNBG01', prod_name='Fish bean bag toy', prod_price=Decimal('3.49'), prod_desc='Fish bean bag toy, complete with bean bag worms with which to feed it', vend_id='DLL01')
-                Result(prod_id='BNBG02', prod_name='Bird bean bag toy', prod_price=Decimal('3.49'), prod_desc='Bird bean bag toy, eggs are not included', vend_id='DLL01')
-                Result(prod_id='BNBG03', prod_name='Rabbit bean bag toy', prod_price=Decimal('3.49'), prod_desc='Rabbit bean bag toy, comes with bean bag carrots', vend_id='DLL01')
-                Result(prod_id='BR01', prod_name='8 inch teddy bear', prod_price=Decimal('5.99'), prod_desc='8 inch teddy bear, comes with cap and jacket', vend_id='BRS01')
-                Result(prod_id='BR02', prod_name='12 inch teddy bear', prod_price=Decimal('8.99'), prod_desc='12 inch teddy bear, comes with cap and jacket', vend_id='BRS01')
-                Result(prod_id='BR03', prod_name='18 inch teddy bear', prod_price=Decimal('11.99'), prod_desc='18 inch teddy bear, comes with cap and jacket', vend_id='BRS01')
-                Result(prod_id='RGAN01', prod_name='Raggedy Ann', prod_price=Decimal('4.99'), prod_desc='18 inch Raggedy Ann doll', vend_id='DLL01')
-                Result(prod_id='RYL01', prod_name='King doll', prod_price=Decimal('9.49'), prod_desc='12 inch king doll with royal garments and crown', vend_id='FNG01')
-                Result(prod_id='RYL02', prod_name='Queen doll', prod_price=Decimal('9.49'), prod_desc='12 inch queen doll with royal garments and crown', vend_id='FNG01')
-                """
-
-    # 2.5 检索不同的值(去重复)
-    def test_select_different_value(self):
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT DISTINCT vend_id FROM Products;")
-            for result in namedtuplefetchall(cursor): # 读取所有
-                print(result)
-                """
-                Result(vend_id='BRS01')
-                Result(vend_id='DLL01')
-                Result(vend_id='FNG01')
-                """
+    # 3.3 按列位置排序
+    def test_position_sort_data(self):
         """
-        注意: 不能部分使用DISTINCT
-        DISTINCT 关键字作用与所有的列, 不仅仅是跟在其后的那一列. 例如, 你指定
-        SELECT DISTINCT vend_id, prod_price FROM Products;, 则9行里的
-        6行都会呗检索处理, 因为指定的两列组合起来有6个不同的结果. 若想看看究竟有
-        什么不同, 可以试一下这样两条语句:
-        SELECT DISTINCT vend_id, prod_price FROM Products;
-        SELECT vend_id, prod_price FROM Products;
-        """
+        按列位置排序, 指的是SELECT清单中指定的选择列的相对位置, 譬如说:
+            SELECT prod_name, prod_price, prod_id FROM Products ORDER BY 2, 3;
+            ORDER BY 2 表示按SELECT清单的第二个列prod_price进行排序,
+            ORDER BY 2, 3 表示先按prod_price进行排序,  再按prod_id进行排序
 
-    # 2.6 限制结果(不同数据库有不同的实现, 下面是针对MySQL, MariaDB, PostgreSQL, SQLite实现)
-    def test_select_limit(self):
+        提示: 按非选择列排序
+        显然, 当根据不出现再SELECT 清单中的列进行排序时,不能采用这项技术.但是,如果有必要,可用
+        混搭使用实际列名和相对列位置.
+        """
         with connection.cursor() as cursor:
-            cursor.execute("SELECT prod_name FROM Products LIMIT 5;")
-            for result in namedtuplefetchall(cursor): # 读取所有
+            cursor.execute("""
+            SELECT 
+            prod_name, prod_price, prod_id 
+            FROM 
+            Products 
+            ORDER BY 
+            2, 3;
+            """)
+            for result in dictfetchall(cursor):  # 读取所有
                 print(result)
                 """
-                Result(prod_name='Fish bean bag toy')
-                Result(prod_name='Bird bean bag toy')
-                Result(prod_name='Rabbit bean bag toy')
-                Result(prod_name='8 inch teddy bear')
-                Result(prod_name='12 inch teddy bear')
+                {'prod_name': 'Fish bean bag toy', 'prod_price': Decimal('3.49'), 'prod_id': 'BNBG01'}
+                {'prod_name': 'Bird bean bag toy', 'prod_price': Decimal('3.49'), 'prod_id': 'BNBG02'}
+                {'prod_name': 'Rabbit bean bag toy', 'prod_price': Decimal('3.49'), 'prod_id': 'BNBG03'}
+                {'prod_name': 'Raggedy Ann', 'prod_price': Decimal('4.99'), 'prod_id': 'RGAN01'}
+                {'prod_name': '8 inch teddy bear', 'prod_price': Decimal('5.99'), 'prod_id': 'BR01'}
+                {'prod_name': '12 inch teddy bear', 'prod_price': Decimal('8.99'), 'prod_id': 'BR02'}
+                {'prod_name': 'King doll', 'prod_price': Decimal('9.49'), 'prod_id': 'RYL01'}
+                {'prod_name': 'Queen doll', 'prod_price': Decimal('9.49'), 'prod_id': 'RYL02'}
+                {'prod_name': '18 inch teddy bear', 'prod_price': Decimal('11.99'), 'prod_id': 'BR03'}
                 """
+
+    # 3.4 指定排序方向
+    def test_sort_data_desc(self):
+        """
+        如果想再多个列上进行降序排序, 必须对每一列指定DESC关键字
+        """
+        with connection.cursor() as cursor:
+            cursor.execute("""
+            SELECT 
+            prod_price, prod_name, prod_id 
+            FROM 
+            Products 
+            ORDER BY 
+            prod_price
+            DESC;
+            """)
+            for result in dictfetchall(cursor):  # 读取所有
+                print(result)
+                """
+                {'prod_price': Decimal('11.99'), 'prod_name': '18 inch teddy bear', 'prod_id': 'BR03'}
+                {'prod_price': Decimal('9.49'), 'prod_name': 'King doll', 'prod_id': 'RYL01'}
+                {'prod_price': Decimal('9.49'), 'prod_name': 'Queen doll', 'prod_id': 'RYL02'}
+                {'prod_price': Decimal('8.99'), 'prod_name': '12 inch teddy bear', 'prod_id': 'BR02'}
+                {'prod_price': Decimal('5.99'), 'prod_name': '8 inch teddy bear', 'prod_id': 'BR01'}
+                {'prod_price': Decimal('4.99'), 'prod_name': 'Raggedy Ann', 'prod_id': 'RGAN01'}
+                {'prod_price': Decimal('3.49'), 'prod_name': 'Fish bean bag toy', 'prod_id': 'BNBG01'}
+                {'prod_price': Decimal('3.49'), 'prod_name': 'Bird bean bag toy', 'prod_id': 'BNBG02'}
+                {'prod_price': Decimal('3.49'), 'prod_name': 'Rabbit bean bag toy', 'prod_id': 'BNBG03'}
+                """
+
             print("=" * 60)
-            cursor.execute("SELECT prod_name FROM Products LIMIT 5 OFFSET 5;")
-            """
-            分析:
-            LIMIT 5 OFFSET 5 指示MySQL等数据库返回从第5行起的5行数据.
-            第一个数字是检索的行数, 第二个数字是指从哪一行开始. 
-            
-            注意:
-            第一个呗检索的行是第0行, 而不是第1行. 因此, LIMIT 1 OFFSET 1 会检索第2行, 而不是1行.
-            
-            提示:
-            MySQL, MariaDB, SQLit 可以把LIMIT 4 OFFSET 3 语句简化为 LIMIT 3,4
-            使用这个语法, 逗号之前的值对应OFFSET 3, 逗号之后的值对应LIMIT 4 (相反的!! 要小心)
-            """
-            for result in namedtuplefetchall(cursor): # 这个语句的输出是:
+
+            # 多列排序, 某个列为顺序, 某个列为降序
+            cursor.execute("""
+            SELECT 
+            prod_price, prod_name, prod_id 
+            FROM 
+            Products 
+            ORDER BY 
+            prod_price DESC,
+            prod_name;
+            """)
+            for result in dictfetchall(cursor):  # 读取所有
                 print(result)
                 """
-                因为Products表只有9种产品, 所有LIMIT 5 OFFSET 5 只返回了4行数据(因为没有第5行)
-                Result(prod_name='18 inch teddy bear')
-                Result(prod_name='Raggedy Ann')
-                Result(prod_name='King doll')
-                Result(prod_name='Queen doll')
+                {'prod_price': Decimal('11.99'), 'prod_name': '18 inch teddy bear', 'prod_id': 'BR03'}
+                {'prod_price': Decimal('9.49'), 'prod_name': 'King doll', 'prod_id': 'RYL01'}
+                {'prod_price': Decimal('9.49'), 'prod_name': 'Queen doll', 'prod_id': 'RYL02'}
+                {'prod_price': Decimal('8.99'), 'prod_name': '12 inch teddy bear', 'prod_id': 'BR02'}
+                {'prod_price': Decimal('5.99'), 'prod_name': '8 inch teddy bear', 'prod_id': 'BR01'}
+                {'prod_price': Decimal('4.99'), 'prod_name': 'Raggedy Ann', 'prod_id': 'RGAN01'}
+                {'prod_price': Decimal('3.49'), 'prod_name': 'Bird bean bag toy', 'prod_id': 'BNBG02'}
+                {'prod_price': Decimal('3.49'), 'prod_name': 'Fish bean bag toy', 'prod_id': 'BNBG01'}
+                {'prod_price': Decimal('3.49'), 'prod_name': 'Rabbit bean bag toy', 'prod_id': 'BNBG03'}
                 """
 
     # 课后练习
-    def test_exercise(self):
+    def test_exercise1(self):
         """
-        1. Write a SQL statement to retrieve all customer ids (cust_id) from the Customers table.
-
-        2. The OrderItems table contains every item ordered (and some were ordered multiple times).
-           Write a SQL statement to retrieve a list of the products (prod_id) ordered (not every
-           order, just a unique list of products). Here’s a hint, you should end up with seven
-           unique rows displayed.
-
-        3. Write a SQL statement that retrieves all columns from the Customers table, and an alternate
-           SELECT that retrieves just the customer id. Use comments to “comment out” one SELECT so as
-           to be able to run the other. (And of course, test both statements).
+        1. Write a SQL statement to retrieve all customer names (cust_name) from the Customers table,
+           and display the results sorted from Z to A.
         """
         with connection.cursor() as cursor:
-            cursor.execute("SELECT cust_id FROM Customers;")
+            cursor.execute("SELECT cust_name FROM Customers ORDER BY 1 DESC ;")
             for result in namedtuplefetchall(cursor): # 读取所有
                 print(result)
+                """
+                Result(cust_name='Village Toys')
+                Result(cust_name='The Toy Store')
+                Result(cust_name='Kids Place')
+                Result(cust_name='Fun4All')
+                Result(cust_name='Fun4All')
+                """
 
-            print("=" * 60)
-
-            cursor.execute("SELECT DISTINCT prod_id FROM OrderItems;")
-            for result in namedtuplefetchall(cursor): # 读取所有
+    def test_exercise2(self):
+        """
+        2. Write a SQL statement to retrieve customer id (cust_id) and order number (order_num) from
+           the Orders table, and sort the results first by customer id, and then by order date in
+           reverse chronological order.
+        """
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT cust_id, order_num FROM Orders ORDER BY 1, order_date DESC;")
+            for result in namedtuplefetchall(cursor):  # 读取所有
                 print(result)
+                """
+                Result(cust_id='1000000001', order_num=20005)
+                Result(cust_id='1000000001', order_num=20009)
+                Result(cust_id='1000000003', order_num=20006)
+                Result(cust_id='1000000004', order_num=20007)
+                Result(cust_id='1000000005', order_num=20008)
+                """
+
+    def test_exercise3(self):
+        """
+        3. Our fictitious store obviously prefers to sell more expensive items, and lots of them.
+           Write a SQL statement to display the quantity and price (item_price) from the OrderItems
+           table, sorted with the highest quantity and highest price first.
+        """
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT quantity, item_price FROM OrderItems ORDER BY 1 DESC, 2 DESC;")
+            for result in namedtuplefetchall(cursor):  # 读取所有
+                print(result)
+                """
+                Result(quantity=250, item_price=Decimal('2.49'))
+                Result(quantity=250, item_price=Decimal('2.49'))
+                Result(quantity=250, item_price=Decimal('2.49'))
+                Result(quantity=100, item_price=Decimal('10.99'))
+                Result(quantity=100, item_price=Decimal('5.49'))
+                Result(quantity=100, item_price=Decimal('2.99'))
+                Result(quantity=100, item_price=Decimal('2.99'))
+                Result(quantity=100, item_price=Decimal('2.99'))
+                Result(quantity=50, item_price=Decimal('11.49'))
+                Result(quantity=50, item_price=Decimal('4.49'))
+                Result(quantity=20, item_price=Decimal('5.99'))
+                Result(quantity=10, item_price=Decimal('11.99'))
+                Result(quantity=10, item_price=Decimal('8.99'))
+                Result(quantity=10, item_price=Decimal('3.49'))
+                Result(quantity=10, item_price=Decimal('3.49'))
+                Result(quantity=10, item_price=Decimal('3.49'))
+                Result(quantity=5, item_price=Decimal('11.99'))
+                Result(quantity=5, item_price=Decimal('4.99'))
+                """
+
+    def test_exercise4(self):
+        """
+        4. What is wrong with the following SQL statement? (Try to figure it out without running it):
+        SELECT vend_name,
+        FROM Vendors
+        ORDER vend_name DESC;
+        """
+        pass
