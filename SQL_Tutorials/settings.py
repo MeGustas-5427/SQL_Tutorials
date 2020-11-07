@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "tutorials.create_table.apps.CreateTableConfig",
     "tutorials.class_2.apps.Class2Config",
     "tutorials.class_3.apps.Class3Config",
+    "tutorials.class_4.apps.Class4Config",
 ]
 
 MIDDLEWARE = [
