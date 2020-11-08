@@ -12,19 +12,32 @@
 
 ### 第5章(tutorials-class_5) - 高级数据过滤
 
-6：使用通配符过滤
-7：创建计算字段
-8：使用数据处理功能
-9：汇总数据
-10：分组数据
-11：使用子查询
-12：联接表
-13：创建高级联接
-14：合并查询
-15：插入数据
-16：更新和删除数据
-17：创建和处理表
-18：使用视图
+### 第6章(tutorials-class_6) - 使用通配符过滤
+
+### 第7章(tutorials-class_7) - 创建计算字段
+
+### 第8章(tutorials-class_8) - 使用数据处理功能
+
+### 第9章(tutorials-class_9) - 汇总数据
+
+### 第10章(tutorials-class_10) - 分组数据
+
+### 第11章(tutorials-class_11) - 使用子查询
+
+### 第12章(tutorials-class_12) - 联接表
+
+### 第13章(tutorials-class_13) - 创建高级联接
+
+### 第14章(tutorials-class_14) - 合并查询
+
+### 第15章(tutorials-class_15) - 插入数据
+
+### 第16章(tutorials-class_16) - 更新和删除数据
+
+### 第17章(tutorials-class_17) - 创建和处理表
+
+### 第18章(tutorials-class_18) - 使用视图
+
 19：使用存储过程
 20：管理事务处理
 21：使用游标

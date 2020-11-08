@@ -119,242 +119,231 @@ class TestSQL(TestCase):
         OrderItems.objects.all().delete()
         Products.objects.all().delete()
 
-    # 5.1 组合WHERE子句
-    def test_compose_where(self):
+    # 6.1 LIKE 操作符
+    def test_like_operator(self):
         """
-        为了进行更强的过滤控制,SQL允许给出多个WHERE子句.这些子句有两种
-        使用方式,即以AND子句或OR子句的方式使用.
-
-        操作符(operator)
-            用来联结或改变WHERE子句中的子句的关键字, 也称为逻辑操作符(logical operator)
+        通配符搜索只能用于文本字段(字符串),非文本数据类型字段不能使用通配符搜索.
         """
         pass
 
-    # 5.1.1 AND 操作符
-    def test_and_operator(self):
+    # 6.1.1 百分号(%)通配符
+    def test_percent_sign_wildcard(self):
+        """
+        最常使用得通配符是百分号(%).在搜索串中,%表示任何字符串出现任意次数.
+        """
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT 
-                prod_id, prod_name, prod_price 
-                FROM 
-                Products 
-                WHERE
-                vend_id = 'DLL01' AND prod_price <= 4;
-                """)
+                SELECT prod_id, prod_name
+                FROM Products 
+                WHERE prod_name 
+                LIKE 'Fish%';
+            """)
             """
-            AND: 用在WHERE子句中的关键字,用来指示检索满足所有给定条件的行.
+            此例子使用了搜索模式'Fish%'.在执行这调子句时,将检索任意以Fish起头得词.
+            %告诉DBMS接受Fish之后得任意字符,不管它有多少字符.
             """
-            for result in dictfetchall(cursor):  # 读取所有
+            for result in namedtuplefetchall(cursor):  # 读取所有
                 print(result)
                 """
-                {'prod_id': 'BNBG01', 'prod_name': 'Fish bean bag toy', 'prod_price': Decimal('3.49')}
-                {'prod_id': 'BNBG02', 'prod_name': 'Bird bean bag toy', 'prod_price': Decimal('3.49')}
-                {'prod_id': 'BNBG03', 'prod_name': 'Rabbit bean bag toy', 'prod_price': Decimal('3.49')}
+                Result(prod_id='BNBG01', prod_name='Fish bean bag toy')
                 """
-
-    # 5.1.2 OR 操作符
-    def test_or_operator(self):
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT 
-                prod_id, prod_name, prod_price 
-                FROM 
-                Products 
-                WHERE
-                vend_id = 'DLL01' OR vend_id = 'BRS01';
-                """)
-            """
-            OR: 与AND相反,OR操作符告诉DBMS匹配任一条件而不是同时匹配两个条件.
-            """
-            for result in dictfetchall(cursor):  # 读取所有
-                print(result)
-                """
-                {'prod_id': 'BR01', 'prod_name': '8 inch teddy bear', 'prod_price': Decimal('5.99')}
-                {'prod_id': 'BR02', 'prod_name': '12 inch teddy bear', 'prod_price': Decimal('8.99')}
-                {'prod_id': 'BR03', 'prod_name': '18 inch teddy bear', 'prod_price': Decimal('11.99')}
-                {'prod_id': 'BNBG01', 'prod_name': 'Fish bean bag toy', 'prod_price': Decimal('3.49')}
-                {'prod_id': 'BNBG02', 'prod_name': 'Bird bean bag toy', 'prod_price': Decimal('3.49')}
-                {'prod_id': 'BNBG03', 'prod_name': 'Rabbit bean bag toy', 'prod_price': Decimal('3.49')}
-                {'prod_id': 'RGAN01', 'prod_name': 'Raggedy Ann', 'prod_price': Decimal('4.99')}
-                """
-
-    # 5.1.3 求值顺序
-    def test_value_order_by(self):
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT 
-                vend_id, prod_price
-                FROM 
-                Products 
-                WHERE
-                vend_id = 'DLL01' OR vend_id = 'BRS01' AND prod_price >= 10;
-                """)
-            for result in dictfetchall(cursor):  # 读取所有
-                print(result)
-                """
-                {'vend_id': 'BRS01', 'prod_price': Decimal('11.99')}
-                {'vend_id': 'DLL01', 'prod_price': Decimal('3.49')}
-                {'vend_id': 'DLL01', 'prod_price': Decimal('3.49')}
-                {'vend_id': 'DLL01', 'prod_price': Decimal('3.49')}
-                {'vend_id': 'DLL01', 'prod_price': Decimal('4.99')}
-                """
-            """
-            结果:
-                返回的行中有4行价格小于10美元, 显然返回的行未按预期的进行过滤.
-            错误示范的结果解释:
-                原因在于求值的顺序. SQL(像多数语言一样)在处理OR操作符前,优先处理AND操作符.
-                当SQL看到上述WHERE子句时,它理解为:由供应商BRS01制造的价格为10美元以上的所
-                有产品,以及由供应商DLL01制造的所有产品,而不管其价格如何.
-            """
 
             print("=" * 60)
-            cursor.execute("""
-                SELECT 
-                vend_id, prod_price
-                FROM 
-                Products 
-                WHERE
-                (vend_id = 'DLL01' OR vend_id = 'BRS01') AND prod_price >= 10;
-                """)
-            """
-            解决方法: 使用圆括号对操作符进行明确分组. 因为圆括号具有比AND或OR操作符更高的优先级.
-            提示:
-                任何时候使用具有AND和OR操作符的WHERE子句,都应该使用圆括号
-                明确地分组操作符.不要过分依赖默认求值顺序,即使它确实如你希
-                望的那样.使用圆括号没有任何坏处,它能消除歧义.
-            """
-            for result in dictfetchall(cursor):  # 读取所有
-                print(result)
-                """
-                {'vend_id': 'BRS01', 'prod_price': Decimal('11.99')}
-                """
 
-    # 5.2 IN 操作符
-    def test_in_operator(self):
+            """根据DBMS的不同及其配置,搜索可以是区分大小写的"""
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT prod_id, prod_name
+                    FROM Products 
+                    WHERE prod_name 
+                    LIKE '%bean bag%';
+                """)
+                """
+                通配符可在搜索模式中的任意位置使用,并且可以使用多个通配符.
+                搜索模式'%bean bag%'表示匹配任何位置商包含文本bean bag
+                的值,不论它之前或之后出现什么字符.
+                """
+                for result in namedtuplefetchall(cursor):  # 读取所有
+                    print(result)
+                    """
+                    Result(prod_id='BNBG01', prod_name='Fish bean bag toy')
+                    Result(prod_id='BNBG02', prod_name='Bird bean bag toy')
+                    Result(prod_id='BNBG03', prod_name='Rabbit bean bag toy')
+                    """
+
+            print("=" * 60)
+
+            """通配符也可以出现在搜索模式的中间,虽然这样做不太有用."""
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT prod_id, prod_name
+                    FROM Products 
+                    WHERE prod_name 
+                    LIKE 'F%y';
+                """)
+                """
+                说明: 请注意后面所跟的空格
+                    有些DBMS用空格来填补字段的内容.例如,如果某列有50个字符,而存储的文本为
+                    Fish bean bag toy(17个字符),则为填满该列需要的文本后附加33个空格.
+                    这样做一般对数据及其使用没有影响,但是可以对上述SQL语句有负面影响.子句
+                    WHERE prod_name LIKE 'F%y'只匹配以F开头 以y结尾的prod_name.如果
+                    值后面有空格,则不是以y结尾,所以Fish bean bag toy就不会检索出来.简单
+                    的解决办法是给搜索模式再增加一个%号:'F%y%'还匹配y之后的字符(或空格).
+                    更好的解决办法是用函数去掉空格.第8课说.
+                    
+                注意: 请注意NULL
+                    通配符%看起来像是可以匹配任何东西,但有个例外,这就是NULL.
+                    子句WHERE prod_name LIKE '%'不会匹配产品名为NULL的行.
+                """
+                for result in namedtuplefetchall(cursor):  # 读取所有
+                    print(result)
+                    """
+                    Result(prod_id='BNBG01', prod_name='Fish bean bag toy')
+                    """
+
+    # 6.1.2 下划线(_)通配符
+    def test_underscore_wildcard(self):
+        """
+        下划线的用途与%一样,但它只匹配单个字符,而不是多个字符.
+        说明: DB2不支持通配符_
+        """
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT 
-                vend_id, prod_name
-                FROM 
-                Products 
-                WHERE
-                vend_id IN ('DLL01', 'BRS01');
-                """)
-            """
-            IN操作符完成了与OR相同的功能, 为何要使用IN操作符?
-            1. IN操作付一般比一组OR操作符执行得更快.
-            2. 在有很多合法选项时,IN操作符的语法更清楚, 更直观.
-            3. 在与其他AND和OR操作符组合使用IN时,求值顺序更容易管理.
-            4. IN得最大优点是可以包含其他SELECT语句,能够更动态地建立WHERE子句. 第11课会介绍.
-            """
-            for result in dictfetchall(cursor):  # 读取所有
-                print(result)
-                """
-                {'vend_id': 'BRS01', 'prod_name': '8 inch teddy bear'}
-                {'vend_id': 'BRS01', 'prod_name': '12 inch teddy bear'}
-                {'vend_id': 'BRS01', 'prod_name': '18 inch teddy bear'}
-                {'vend_id': 'DLL01', 'prod_name': 'Fish bean bag toy'}
-                {'vend_id': 'DLL01', 'prod_name': 'Bird bean bag toy'}
-                {'vend_id': 'DLL01', 'prod_name': 'Rabbit bean bag toy'}
-                {'vend_id': 'DLL01', 'prod_name': 'Raggedy Ann'}
-                """
-
-    # 5.3 NOT 操作符
-    def test_not_operator(self):
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT vend_id, prod_name
+                SELECT prod_id, prod_name
                 FROM Products 
-                WHERE NOT vend_id = 'DLL01'
-                ORDER BY prod_name;
-                """)
-            """
-            NOT: 该关键字在WHERE子句中用来否定其后条件
-                在复杂的子句中, NOT非常有用. 
-                譬如, 在与IN操作符联合使用时,NOT可以非常简单地找出与条件列表不匹配得行
-            """
-            for result in dictfetchall(cursor):  # 读取所有
+                WHERE prod_name 
+                LIKE '__ inch teddy bear';
+            """)
+
+            for result in namedtuplefetchall(cursor):  # 读取所有
                 print(result)
                 """
-                {'vend_id': 'BRS01', 'prod_name': '12 inch teddy bear'}
-                {'vend_id': 'BRS01', 'prod_name': '18 inch teddy bear'}
-                {'vend_id': 'BRS01', 'prod_name': '8 inch teddy bear'}
-                {'vend_id': 'FNG01', 'prod_name': 'King doll'}
-                {'vend_id': 'FNG01', 'prod_name': 'Queen doll'}
+                Result(prod_id='BR02', prod_name='12 inch teddy bear')
+                Result(prod_id='BR03', prod_name='18 inch teddy bear')
                 """
+
+    # 6.1.3 方括号([])通配符
+    def test_square_brackets_wildcard(self):
+        """
+        方括号([])通配符用来指定一个字符集,它必须匹配指定位置(通配符的位置)的一个字符.
+        """
+        with connection.cursor() as cursor:
+            """找出所有名字以J或M开头的联系人."""
+            cursor.execute("""
+                SELECT cust_contact
+                FROM Customers 
+                WHERE cust_contact
+                LIKE '[JM]%';
+            """)
+
+            """可以使用前缀字符^(脱字号)来否定, 譬如查询匹配以J和M之外的任意字符起头的任意联系人名"""
+            cursor.execute("""
+                SELECT cust_contact
+                FROM Customers 
+                WHERE cust_contact
+                LIKE '^[JM]%';
+            """)
+            """
+            说明: 并不总是支持集合
+                与前面描述的通配符不一样,并不是所有DBMS都支持用来创建集合的[].微软
+                SQL Server支持集合,但是MySQL,Oracle,DB2,SQLite都不支持.
+            """
+            for result in namedtuplefetchall(cursor):  # 读取所有
+                print(result)
+
+    # 6.2 使用通配符的技巧
+    """
+    SQL的通配符很有用.但这种功能是有代价的,即通配符搜索一般比前面讨论的其他搜索
+    要耗费更长的处理时间.这里给出一些使用通配符时要记住的技巧.
+    1. 不要过渡使用通配符.如果其他操作符能达到相同的目的,应该使用其他操作符.
+    2. 在确实需要使用通配符时,也尽力不要把他们用在搜索模式的开始处.把通配符
+       置于开始处,搜索起来是最慢的.
+    3. 仔细注意通配符的位置.如果放错地方,可能不会返回想要的数据.
+    """
 
     # 课后练习
     def test_exercise1(self):
         """
-        1. Write a SQL statement to retrieve the vendor name (vend_name) from the
-           Vendors table, returning only vendors in California (this requires
-           filtering by both country (USA) and state (CA), after all, there could
-           be a California outside of the USA). Here’s a hint, the filter
-           requires matching strings.
+        1. Write a SQL statement to retrieve the product name (prod_name) and
+           description (prod_desc) from the Products table, returning only
+           products where the word toy is in the description.
         """
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT vend_name, vend_country, vend_state 
-                FROM Vendors 
-                WHERE (vend_country = 'USA' AND vend_state = 'CA');
-                """)
+                SELECT prod_name, prod_desc 
+                FROM Products 
+                WHERE prod_desc LIKE '%toy%';
+            """)
             for result in namedtuplefetchall(cursor): # 读取所有
                 print(result)
                 """
-                Result(vend_name='Doll House Inc.', vend_country='USA', vend_state='CA')
+                Result(prod_name='Fish bean bag toy', prod_desc='Fish bean bag toy, complete with bean bag worms with which to feed it')
+                Result(prod_name='Bird bean bag toy', prod_desc='Bird bean bag toy, eggs are not included')
+                Result(prod_name='Rabbit bean bag toy', prod_desc='Rabbit bean bag toy, comes with bean bag carrots')
                 """
 
     def test_exercise2(self):
         """
-        2. Write a SQL statement to find all orders where at least 100 of items BR01,
-           BR02, or BR03 were ordered. You’ll want to return order number (order_num),
-           product id (prod_id), and quantity for the OrderItems table, filtering by
-           both the product id and quantity. Here’s a hint, depending on how you write
-           your filter, you may need to pay special attention to order of evaluation.
+        2. Now let’s flip things around. Write a SQL statement to retrieve the product
+           name (prod_name) and description (prod_desc) from the Products table,
+           returning only products where the word toy doesn’t appear in the description.
+           And this time, sort the results by product name.
         """
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT prod_id, order_num , quantity
-                FROM OrderItems 
-                WHERE (quantity >= 100 AND prod_id IN ('BR01','BR02','BR03'));
-                """)
+                SELECT prod_name, prod_desc 
+                FROM Products 
+                WHERE NOT prod_desc LIKE '%toy%'
+                ORDER BY prod_name;
+            """)
             for result in namedtuplefetchall(cursor):  # 读取所有
                 print(result)
                 """
-                Result(prod_id='BR01', order_num=20005, quantity=100)
-                Result(prod_id='BR03', order_num=20005, quantity=100)
+                Result(prod_name='12 inch teddy bear', prod_desc='12 inch teddy bear, comes with cap and jacket')
+                Result(prod_name='18 inch teddy bear', prod_desc='18 inch teddy bear, comes with cap and jacket')
+                Result(prod_name='8 inch teddy bear', prod_desc='8 inch teddy bear, comes with cap and jacket')
+                Result(prod_name='King doll', prod_desc='12 inch king doll with royal garments and crown')
+                Result(prod_name='Queen doll', prod_desc='12 inch queen doll with royal garments and crown')
+                Result(prod_name='Raggedy Ann', prod_desc='18 inch Raggedy Ann doll')
                 """
 
     def test_exercise3(self):
         """
-        3. Now let’s revisit a challenge from the previous lesson. Write a SQL statement
-           which returns the product name (prod_name) and price (prod_price) from
-           Products for all products priced between 3 and 6. Use an AND, and sort the
-           results by price.
+        3. Write a SQL statement to retrieve the product name (prod_name) and description
+           (prod_desc) from the Products table, returning only products where both the
+           words toy and carrots appear in the description. There are a couple of ways to
+           do this, but for this challenge use AND and two LIKE comparisons.
         """
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT prod_name, prod_price
+                SELECT prod_name, prod_desc 
                 FROM Products 
-                WHERE (prod_price >= 3 AND prod_price <= 6)
-                ORDER BY prod_price;
-                """)
+                WHERE (prod_desc LIKE '%toy%' AND prod_desc LIKE '%carrots%');
+            """)
             for result in namedtuplefetchall(cursor):  # 读取所有
                 print(result)
                 """
-                Result(prod_name='Fish bean bag toy', prod_price=Decimal('3.49'))
-                Result(prod_name='Bird bean bag toy', prod_price=Decimal('3.49'))
-                Result(prod_name='Rabbit bean bag toy', prod_price=Decimal('3.49'))
-                Result(prod_name='Raggedy Ann', prod_price=Decimal('4.99'))
-                Result(prod_name='8 inch teddy bear', prod_price=Decimal('5.99'))
+                Result(prod_name='Rabbit bean bag toy', prod_desc='Rabbit bean bag toy, comes with bean bag carrots')
                 """
 
     def test_exercise4(self):
         """
-        4. What is wrong with the following SQL statement? (Try to figure it out without running it):
-        SELECT vend_name
-        FROM Vendors
-        ORDER BY vend_name
-        WHERE vend_country = 'USA' AND vend_state = 'CA';
+        4. This next one is a little trickier. I didn’t show you this syntax specifically,
+           but see if you can figure it out anyway based on what you have learned thus far.
+           Write a SQL statement to retrieve the product name (prod_name) and description
+           (prod_desc) from the Products table, returning only products where both the
+           words toy and carrots appear in the description in that order (the word toy
+           before the word carrots). Here’s a hint, you’ll only need one LIKE with 3 %
+           symbols to do this.
         """
-        pass
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT prod_name, prod_desc 
+                FROM Products 
+                WHERE prod_desc LIKE '%toy%%carrots%';
+            """)
+            for result in namedtuplefetchall(cursor):  # 读取所有
+                print(result)
+                """
+                Result(prod_name='Rabbit bean bag toy', prod_desc='Rabbit bean bag toy, comes with bean bag carrots')
+                """

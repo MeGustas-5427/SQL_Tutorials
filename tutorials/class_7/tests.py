@@ -119,242 +119,173 @@ class TestSQL(TestCase):
         OrderItems.objects.all().delete()
         Products.objects.all().delete()
 
-    # 5.1 组合WHERE子句
-    def test_compose_where(self):
+    # 7.1 计算字段
+    def calculated_field(self):
+        """存储在数据库表的数据一般不是应用程序所需要的格式"""
         """
-        为了进行更强的过滤控制,SQL允许给出多个WHERE子句.这些子句有两种
-        使用方式,即以AND子句或OR子句的方式使用.
-
-        操作符(operator)
-            用来联结或改变WHERE子句中的子句的关键字, 也称为逻辑操作符(logical operator)
+        - 需要显示公司名,同时还需要显示公司的地址,但这两个信息存储在不同的表列中.
+        - 城市,州和邮政编码存储在不同的列中,但邮件标签打印程序需要把他们作为一个
+          有恰当格式的字段检索出来.
+        - 列数据是大小写混合的,但报表程序需要把所有数据按大写表示出来.
+        - 物品订单表存储物品的价格和数量,不存储每个物品的总价格(用价格×数量即可).
+          但为打印发票,需要物品的总价格.
+        - 需要根据表数据进行诸如总数,平均数的计算.
         """
-        pass
 
-    # 5.1.1 AND 操作符
-    def test_and_operator(self):
+    # 7.2 拼接字段
+    def test_splicing_field(self):
+        with connection.cursor() as cursor:
+            """
+            把两个列拼接起, 在SQL中的SELECT语句中, 可使用一个特殊的操作符来拼接两个列.
+            根据所使用的DBMS, 此操作符可用加号(+)或两个竖杠(||)表示.在MySQL和MariaDB
+            中,必须使用特殊的函数
+            """
+            # 使用MySQL或MariaDB时需要使用的语句:
+            cursor.execute("""
+                SELECT CONCAT(vend_name, '(', vend_country, ')   ')
+                AS vend_title
+                FROM Vendors
+                ORDER BY vend_name;
+            """)
+            """
+            使用别名:
+                新计算列的名字需要一个新名字, SQL支持别名,别名(alias)是一个字段
+                或值的替换名.别名用AS关键字赋予.
+            """
+            for result in dictfetchall(cursor):  # 读取所有
+                print(result)
+                """
+                {'vend_title': 'Bear Emporium(USA)   '}
+                {'vend_title': 'Bears R Us(USA)   '}
+                {'vend_title': 'Doll House Inc.(USA)   '}
+                {'vend_title': 'Fun and Games(England)   '}
+                {'vend_title': 'Furball Inc.(USA)   '}
+                {'vend_title': 'Jouets et ours(France)   '}
+                """
+            # 加号用法(多数DBMS的用法):
+            """
+                SELECT vend_name + '(' + vend_country + ')'
+                FROM Vendors
+                ORDER BY vend_name;
+            """
+            # ||号用法:
+            """
+                SELECT vend_name || '(' || vend_country || ')'
+                FROM Vendors
+                ORDER BY vend_name;
+            """
+
+    # 7.2.1 TRMI函数
+    def test_trim_func(self):
+        with connection.cursor() as cursor:
+            """
+            如果想去掉返回的数据不需要的空格.可用使用TRIM函数
+            大多数DBMS都支持:
+            TRIM() :去掉字符串左右两边的空格.
+            LTRIM():去掉字符串左两边的空格.
+            RTRIM():去掉字符串右两边的空格.
+            """
+            # 使用MySQL或MariaDB时需要使用的语句:
+            cursor.execute("""
+                SELECT CONCAT(vend_name, TRIM('  (  '), vend_country, RTRIM(')  '))
+                AS 'vend title'
+                FROM Vendors
+                ORDER BY vend_name;
+            """)
+            """
+            注意: 别名
+                别名的名字既可以是一个单词,也可用是一个字符串.如果是后者(譬如vend title),
+                字符串应该括在引号中.虽然这种做法是合法的,但不建议这么去做.多单词的名字可读
+                性高,不过会给客户端应用带来各种问题.因此,别名最常见的使用是将多个单词的列名
+                重命名为一个单词的名字.
+            """
+            for result in dictfetchall(cursor):  # 读取所有
+                print(result)
+                """
+                {'vend title': 'Bear Emporium(USA)'}
+                {'vend title': 'Bears R Us(USA)'}
+                {'vend title': 'Doll House Inc.(USA)'}
+                {'vend title': 'Fun and Games(England)'}
+                {'vend title': 'Furball Inc.(USA)'}
+                {'vend title': 'Jouets et ours(France)'}
+                """
+
+    # 7.3 执行算术计算
+    def test_arithmetic_calculation(self):
+        """
+        SQL算术操作符 +(加), -(减), *(乘), /(除)
+
+        SELECT语句为测试,检验函数和计算提供了很好的方法.虽然SELECT通常用于从表中检索数据,
+        但是省略了FROM子句后就是简单地访问和处理表达式,例如SELECT 3 * 2;将返回6,
+        SELECT Trim('  ABC ');将返回ABC;SELECT Curdate();使用Curdate()函数返回当
+        前日期和时间.
+        """
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT 
-                prod_id, prod_name, prod_price 
-                FROM 
-                Products 
-                WHERE
-                vend_id = 'DLL01' AND prod_price <= 4;
-                """)
-            """
-            AND: 用在WHERE子句中的关键字,用来指示检索满足所有给定条件的行.
-            """
+                SELECT prod_id, quantity, item_price, quantity*item_price AS total
+                FROM OrderItems
+                WHERE order_num = 20008;
+            """)
             for result in dictfetchall(cursor):  # 读取所有
                 print(result)
                 """
-                {'prod_id': 'BNBG01', 'prod_name': 'Fish bean bag toy', 'prod_price': Decimal('3.49')}
-                {'prod_id': 'BNBG02', 'prod_name': 'Bird bean bag toy', 'prod_price': Decimal('3.49')}
-                {'prod_id': 'BNBG03', 'prod_name': 'Rabbit bean bag toy', 'prod_price': Decimal('3.49')}
-                """
-
-    # 5.1.2 OR 操作符
-    def test_or_operator(self):
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT 
-                prod_id, prod_name, prod_price 
-                FROM 
-                Products 
-                WHERE
-                vend_id = 'DLL01' OR vend_id = 'BRS01';
-                """)
-            """
-            OR: 与AND相反,OR操作符告诉DBMS匹配任一条件而不是同时匹配两个条件.
-            """
-            for result in dictfetchall(cursor):  # 读取所有
-                print(result)
-                """
-                {'prod_id': 'BR01', 'prod_name': '8 inch teddy bear', 'prod_price': Decimal('5.99')}
-                {'prod_id': 'BR02', 'prod_name': '12 inch teddy bear', 'prod_price': Decimal('8.99')}
-                {'prod_id': 'BR03', 'prod_name': '18 inch teddy bear', 'prod_price': Decimal('11.99')}
-                {'prod_id': 'BNBG01', 'prod_name': 'Fish bean bag toy', 'prod_price': Decimal('3.49')}
-                {'prod_id': 'BNBG02', 'prod_name': 'Bird bean bag toy', 'prod_price': Decimal('3.49')}
-                {'prod_id': 'BNBG03', 'prod_name': 'Rabbit bean bag toy', 'prod_price': Decimal('3.49')}
-                {'prod_id': 'RGAN01', 'prod_name': 'Raggedy Ann', 'prod_price': Decimal('4.99')}
-                """
-
-    # 5.1.3 求值顺序
-    def test_value_order_by(self):
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT 
-                vend_id, prod_price
-                FROM 
-                Products 
-                WHERE
-                vend_id = 'DLL01' OR vend_id = 'BRS01' AND prod_price >= 10;
-                """)
-            for result in dictfetchall(cursor):  # 读取所有
-                print(result)
-                """
-                {'vend_id': 'BRS01', 'prod_price': Decimal('11.99')}
-                {'vend_id': 'DLL01', 'prod_price': Decimal('3.49')}
-                {'vend_id': 'DLL01', 'prod_price': Decimal('3.49')}
-                {'vend_id': 'DLL01', 'prod_price': Decimal('3.49')}
-                {'vend_id': 'DLL01', 'prod_price': Decimal('4.99')}
-                """
-            """
-            结果:
-                返回的行中有4行价格小于10美元, 显然返回的行未按预期的进行过滤.
-            错误示范的结果解释:
-                原因在于求值的顺序. SQL(像多数语言一样)在处理OR操作符前,优先处理AND操作符.
-                当SQL看到上述WHERE子句时,它理解为:由供应商BRS01制造的价格为10美元以上的所
-                有产品,以及由供应商DLL01制造的所有产品,而不管其价格如何.
-            """
-
-            print("=" * 60)
-            cursor.execute("""
-                SELECT 
-                vend_id, prod_price
-                FROM 
-                Products 
-                WHERE
-                (vend_id = 'DLL01' OR vend_id = 'BRS01') AND prod_price >= 10;
-                """)
-            """
-            解决方法: 使用圆括号对操作符进行明确分组. 因为圆括号具有比AND或OR操作符更高的优先级.
-            提示:
-                任何时候使用具有AND和OR操作符的WHERE子句,都应该使用圆括号
-                明确地分组操作符.不要过分依赖默认求值顺序,即使它确实如你希
-                望的那样.使用圆括号没有任何坏处,它能消除歧义.
-            """
-            for result in dictfetchall(cursor):  # 读取所有
-                print(result)
-                """
-                {'vend_id': 'BRS01', 'prod_price': Decimal('11.99')}
-                """
-
-    # 5.2 IN 操作符
-    def test_in_operator(self):
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT 
-                vend_id, prod_name
-                FROM 
-                Products 
-                WHERE
-                vend_id IN ('DLL01', 'BRS01');
-                """)
-            """
-            IN操作符完成了与OR相同的功能, 为何要使用IN操作符?
-            1. IN操作付一般比一组OR操作符执行得更快.
-            2. 在有很多合法选项时,IN操作符的语法更清楚, 更直观.
-            3. 在与其他AND和OR操作符组合使用IN时,求值顺序更容易管理.
-            4. IN得最大优点是可以包含其他SELECT语句,能够更动态地建立WHERE子句. 第11课会介绍.
-            """
-            for result in dictfetchall(cursor):  # 读取所有
-                print(result)
-                """
-                {'vend_id': 'BRS01', 'prod_name': '8 inch teddy bear'}
-                {'vend_id': 'BRS01', 'prod_name': '12 inch teddy bear'}
-                {'vend_id': 'BRS01', 'prod_name': '18 inch teddy bear'}
-                {'vend_id': 'DLL01', 'prod_name': 'Fish bean bag toy'}
-                {'vend_id': 'DLL01', 'prod_name': 'Bird bean bag toy'}
-                {'vend_id': 'DLL01', 'prod_name': 'Rabbit bean bag toy'}
-                {'vend_id': 'DLL01', 'prod_name': 'Raggedy Ann'}
-                """
-
-    # 5.3 NOT 操作符
-    def test_not_operator(self):
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT vend_id, prod_name
-                FROM Products 
-                WHERE NOT vend_id = 'DLL01'
-                ORDER BY prod_name;
-                """)
-            """
-            NOT: 该关键字在WHERE子句中用来否定其后条件
-                在复杂的子句中, NOT非常有用. 
-                譬如, 在与IN操作符联合使用时,NOT可以非常简单地找出与条件列表不匹配得行
-            """
-            for result in dictfetchall(cursor):  # 读取所有
-                print(result)
-                """
-                {'vend_id': 'BRS01', 'prod_name': '12 inch teddy bear'}
-                {'vend_id': 'BRS01', 'prod_name': '18 inch teddy bear'}
-                {'vend_id': 'BRS01', 'prod_name': '8 inch teddy bear'}
-                {'vend_id': 'FNG01', 'prod_name': 'King doll'}
-                {'vend_id': 'FNG01', 'prod_name': 'Queen doll'}
+                {'prod_id': 'RGAN01', 'quantity': 5, 'item_price': Decimal('4.99'), 'total': Decimal('24.95')}
+                {'prod_id': 'BR03', 'quantity': 5, 'item_price': Decimal('11.99'), 'total': Decimal('59.95')}
+                {'prod_id': 'BNBG01', 'quantity': 10, 'item_price': Decimal('3.49'), 'total': Decimal('34.90')}
+                {'prod_id': 'BNBG02', 'quantity': 10, 'item_price': Decimal('3.49'), 'total': Decimal('34.90')}
+                {'prod_id': 'BNBG03', 'quantity': 10, 'item_price': Decimal('3.49'), 'total': Decimal('34.90')}
                 """
 
     # 课后练习
     def test_exercise1(self):
         """
-        1. Write a SQL statement to retrieve the vendor name (vend_name) from the
-           Vendors table, returning only vendors in California (this requires
-           filtering by both country (USA) and state (CA), after all, there could
-           be a California outside of the USA). Here’s a hint, the filter
-           requires matching strings.
+        1. A common use for aliases is to rename table column fields in retrieved results
+           (perhaps to match specific reporting or client needs). Write a SQL statement
+           that retrieves vend_id, vend_name, vend_address, and vend_city from Vendors,
+           renaming vend_name to vname, vend_city to vcity, and vend_address to vaddress.
+           Sort the results by vendor name (you can use the original name or the renamed
+           name).
         """
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT vend_name, vend_country, vend_state 
+                SELECT vend_id, vend_name AS vname, vend_address AS vaddress, vend_city AS vcity
                 FROM Vendors 
-                WHERE (vend_country = 'USA' AND vend_state = 'CA');
+                ORDER BY vname;
                 """)
             for result in namedtuplefetchall(cursor): # 读取所有
                 print(result)
                 """
-                Result(vend_name='Doll House Inc.', vend_country='USA', vend_state='CA')
+                Result(vend_id='BRE02', vname='Bear Emporium', vaddress='500 Park Street', vcity='Anytown')
+                Result(vend_id='BRS01', vname='Bears R Us', vaddress='123 Main Street', vcity='Bear Town')
+                Result(vend_id='DLL01', vname='Doll House Inc.', vaddress='555 High Street', vcity='Dollsville')
+                Result(vend_id='FNG01', vname='Fun and Games', vaddress='42 Galaxy Road', vcity='London')
+                Result(vend_id='FRB01', vname='Furball Inc.', vaddress='1000 5th Avenue', vcity='New York')
+                Result(vend_id='JTS01', vname='Jouets et ours', vaddress='1 Rue Amusement', vcity='Paris')
                 """
 
     def test_exercise2(self):
         """
-        2. Write a SQL statement to find all orders where at least 100 of items BR01,
-           BR02, or BR03 were ordered. You’ll want to return order number (order_num),
-           product id (prod_id), and quantity for the OrderItems table, filtering by
-           both the product id and quantity. Here’s a hint, depending on how you write
-           your filter, you may need to pay special attention to order of evaluation.
+        2. Our example store is running a sale and all products are 10% off. Write a SQL
+           statement that returns prod_id, prod_price, and sale_price from the Products
+           table. sale_price is a calculated field that contains, well, the sale price.
+           Here’s a hint, you can multiply by 0.9 to get 90% of the original value (and
+           thus the 10% off price).
         """
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT prod_id, order_num , quantity
-                FROM OrderItems 
-                WHERE (quantity >= 100 AND prod_id IN ('BR01','BR02','BR03'));
+                SELECT prod_id, prod_price, prod_price * 0.9 AS sale_price
+                FROM Products;
                 """)
             for result in namedtuplefetchall(cursor):  # 读取所有
                 print(result)
                 """
-                Result(prod_id='BR01', order_num=20005, quantity=100)
-                Result(prod_id='BR03', order_num=20005, quantity=100)
+                Result(prod_id='BNBG01', prod_price=Decimal('3.49'), sale_price=Decimal('3.141'))
+                Result(prod_id='BNBG02', prod_price=Decimal('3.49'), sale_price=Decimal('3.141'))
+                Result(prod_id='BNBG03', prod_price=Decimal('3.49'), sale_price=Decimal('3.141'))
+                Result(prod_id='BR01', prod_price=Decimal('5.99'), sale_price=Decimal('5.391'))
+                Result(prod_id='BR02', prod_price=Decimal('8.99'), sale_price=Decimal('8.091'))
+                Result(prod_id='BR03', prod_price=Decimal('11.99'), sale_price=Decimal('10.791'))
+                Result(prod_id='RGAN01', prod_price=Decimal('4.99'), sale_price=Decimal('4.491'))
+                Result(prod_id='RYL01', prod_price=Decimal('9.49'), sale_price=Decimal('8.541'))
+                Result(prod_id='RYL02', prod_price=Decimal('9.49'), sale_price=Decimal('8.541'))
                 """
-
-    def test_exercise3(self):
-        """
-        3. Now let’s revisit a challenge from the previous lesson. Write a SQL statement
-           which returns the product name (prod_name) and price (prod_price) from
-           Products for all products priced between 3 and 6. Use an AND, and sort the
-           results by price.
-        """
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT prod_name, prod_price
-                FROM Products 
-                WHERE (prod_price >= 3 AND prod_price <= 6)
-                ORDER BY prod_price;
-                """)
-            for result in namedtuplefetchall(cursor):  # 读取所有
-                print(result)
-                """
-                Result(prod_name='Fish bean bag toy', prod_price=Decimal('3.49'))
-                Result(prod_name='Bird bean bag toy', prod_price=Decimal('3.49'))
-                Result(prod_name='Rabbit bean bag toy', prod_price=Decimal('3.49'))
-                Result(prod_name='Raggedy Ann', prod_price=Decimal('4.99'))
-                Result(prod_name='8 inch teddy bear', prod_price=Decimal('5.99'))
-                """
-
-    def test_exercise4(self):
-        """
-        4. What is wrong with the following SQL statement? (Try to figure it out without running it):
-        SELECT vend_name
-        FROM Vendors
-        ORDER BY vend_name
-        WHERE vend_country = 'USA' AND vend_state = 'CA';
-        """
-        pass
