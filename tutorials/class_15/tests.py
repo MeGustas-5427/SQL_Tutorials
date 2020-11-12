@@ -4,7 +4,7 @@
 
 
 from django.test import TestCase
-from django.db import connection
+from django.db import connection, transaction
 
 from tutorials.create_table.models import *
 from utils.functions import namedtuplefetchall, dictfetchall
@@ -276,7 +276,7 @@ class TestSQL(TestCase):
         pass
 
     # 15.2 从一个表复制到另一个表
-    def test_create_select(self):
+    def test_z_create_select(self):
         """
         有一种数据插入不使用INSERT语句。要将一个表的内容复制到一个全
         新的表(运行中创建的表)，可以使用CREATE SELECT语句(或者在
@@ -338,7 +338,7 @@ class TestSQL(TestCase):
                 {'cust_id': '1000000007', 'cust_name': 'Me Gustas', 'cust_address': '广东', 'cust_city': '广州', 'cust_state': 'GD', 'cust_zip': '529999', 'cust_country': 'CHA', 'cust_contact': None, 'cust_email': None}
                 """
 
-    def test_exercise2(self):
+    def test_z_exercise2(self):
         """
         2. Make a backup copy of your Orders and OrderItems tables.
         """
