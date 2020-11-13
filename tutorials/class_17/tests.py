@@ -120,21 +120,46 @@ class TestSQL(TestCase):
         OrderItems.objects.all().delete()
         Products.objects.all().delete()
 
+    """
+    MySQL基础教程
+        4.6.1 查看表的列结构:
+            DESC 表名;
+        5.3.1 字符串类型的种类
+            CHAR	    0-255           bytes   定长字符串
+            VARCHAR	    0-65535         bytes	变长字符串
+            TEXT	    0-65_535        bytes	长文本数据
+            LONGTEXT	0-4_294_967_295 bytes	极大文本数据
+            (定长字符串:不足长度会用空格填充,读取的时候根据各个RDMBS决定是否自动删除空格)
+            (一般 utf-8 编码下，一个汉字 字符 占用 3 个 bytes)
+            (一般 gbk   编码下，一个汉字 字符 占用 2 个 bytes)
+        5.4.1 日期与时间类型的种类
+            数据类型                       范围                               格式              用途
+            DATE	             1000-01-01~9999-12-31	                 YYYY-MM-DD	        日期值
+            TIME	  	       '-838:59:59'~'838:59:59'	                  HH:MM:SS	    时间值或持续时间
+            YEAR    	               1901~2155	                        YYYY	        年份值
+            DATETIME  (1000-01-01 00:00:00)~(9999-12-31 23:59:59)	YYYY-MM-DD HH:MM:SS	混合日期和时间值
+    """
+
     # 17.1 表创建基础
     def test_create_table(self):
         with connection.cursor() as cursor:
             cursor.execute("""
                 CREATE TABLE TestTable
-                (
-                    prod_id CHAR(10) NOT NULL,
-                    vend_id CHAR(10) NOT NULL,
-                    prod_name CHAR(254) NOT NULL,
+                (       #  AUTO_INCREMENT: 自增(自动连续编号功能)
+                    id INT AUTO_INCREMENT PRIMARY KEY,  # 主键默认NOT NULL并且UNIQUE(不许重复)
+                    prod_id CHAR(10) NOT NULL,  # 输入多于指定字符数的数据不会报错而是忽略多出来的数据,             
+                    vend_id CHAR(10) NOT NULL,  # 除非在SQL Models设置为STRICT_TRANS_TABLES
+                    prod_name CHAR(254) NOT NULL,  # 4.1之后版本:CHAR(数字:字符数)和VARCHAR(数字:字符数)
                     prod_price DECIMAL(8,2) NOT NULL,
-                    prod_desc VARCHAR(1000) NULL
-                );
+                    prod_desc VARCHAR(1000) NULL,
+                    create_time TIME,
+                    create_date DATE,
+                    create_year YEAR DEFAULT '2020',  # DEFAULT:设置默认值
+                    date_time DATETIME UNIQUE
+                )
+                CHARSET=utf8mb4;  # 可以选择性增加指定字符编码, 但一般创建数据库设置了字符编码为utf8mb4的话就不用再设置了.
             """)
             print(cursor.fetchone())
-
 
     # 17.1.2 使用NULL值
     def test_null(self):
@@ -142,6 +167,7 @@ class TestSQL(TestCase):
             cursor.execute("""
                 CREATE TABLE TestTable
                 (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
                     prod_id CHAR(10) NOT NULL,
                     vend_id CHAR(10) NOT NULL,
                     prod_name CHAR(254) NOT NULL,
@@ -180,13 +206,31 @@ class TestSQL(TestCase):
                 );
             """)
 
-            # 增加列
+            # 增加列(ADD)
             cursor.execute("""
                 ALTER TABLE TestTable
-                ADD phone CHAR(20);
+                ADD phone CHAR(20) FIRST,  # FIRST 为指定列的位置为第一列
+                ADD sex INT AFTER phone;   # AFTER phone: 指定sex列在phone列的后面  
             """)
 
-            # 删除列
+            # 修改列(MODIFY) mysql基础教程 6.2
+            # 修改列, 包含的数据类型必须具有兼容性,并符合新的设定.
+            # 譬如原字符串100, 新设置字符串长度上限少于100会出问题.
+            # 原则上列中存在数据,则不应该再修改列的数据类型.
+            cursor.execute("""
+                ALTER TABLE TestTable
+                MODIFY prod_name CHAR(1000) NOT NULL,  # 修改列数据类型
+                MODIFY vend_id CHAR(10) NOT NULL FIRST;  # 修改列的顺序(必须含数据类型和相关设置, 即使不变也要填)
+            """)
+
+
+
+            # 初始化AUTO_INCREMENT
+            cursor.execute("""
+                ALTER TABLE TestTable
+                AUTO_INCREMENT=1;  # 若表数据清除后, 可初始化AUTO_INCREMENT, 恢复从1开始自增记录
+            """)
+            # 删除列(DROP)
             cursor.execute("""
                 ALTER TABLE TestTable
                 DROP COLUMN phone;
@@ -207,7 +251,71 @@ class TestSQL(TestCase):
 
     # 17.4 重命名表
     def test_rename_table(self):
-        pass
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE TestTable
+                (
+                    prod_id CHAR(10) NOT NULL,
+                    vend_id CHAR(10) NOT NULL,
+                    prod_name CHAR(254) NOT NULL,
+                    prod_price DECIMAL(8,2) NOT NULL,
+                    prod_desc VARCHAR(1000) NOT NULL DEFAULT 'balabala' # 默认值为'balabala'
+                );
+            """)
+        # 列改名(CHANGE)
+        cursor.execute("""
+            ALTER TABLE TestTable
+            CHANGE sex gender TINYINT;  # 修改列名时候必须含数据类型, 即使数据类型不打算改变.
+        """)
+
+    # 6.12.2 创建索引(MySQL基础教程)
+    def test_create_index(self):
+        """
+            实际上，创建了索引并不代表一定会缩短查找时间。因为根据查找条件的不同，有时候不需要用到索引，而
+        且在某些情况下，使用索引反而会花费更多的时间。
+            例如，人们都说在相同值较多（重复值较多）的情况下最好不要创建索引。我们举一个极端的例子，当某列
+        中只有“YES"和"NO”这两个值时，即使在该列上创建索引也不会提高处理速度。
+            另外，当对创建了索引的表进行更新时，也需要对已经存在的索引信息进行维护。所以，在使用索引的情况
+        下，检索速度可能会变快，但与此同时，更新速度也很可能会变慢。
+            在使用索引的情况下，即使索引在创建过程中出现了错误，查找结果也不会受到任何影响。创建索引只会影
+        响数据库整体的处理速度。
+            索引的创建是影响整个数据库处理效率的重要问题。我们把这种提高处理效率的对策称为调优(tuning)。
+        如何调优就要看数据库工程师的技能了。
+        """
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE TestTable
+                (
+                    prod_id CHAR(10) NOT NULL,
+                    vend_id CHAR(10) NOT NULL,
+                    prod_name CHAR(254) NOT NULL,
+                    prod_price DECIMAL(8,2) NOT NULL,
+                    prod_desc VARCHAR(1000) NOT NULL DEFAULT 'balabala'
+                );
+            """)
+            # 创建索引格式:CREATE INDEX 自定义索引名 ON 表名 (列名);
+            cursor.execute("""
+                CREATE INDEX index_prod_id ON TestTable (prod_id);
+            """)
+            # 确定索引设置是否成功:SHOW INDEX FROM TestTable \G  # '\G'替代';', 会纵向显示列值, 清晰一些.
+
+    # 6.12.4 删除索引(MySQL基础教程)
+    def test_drop_index(self):
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE TestTable
+                (
+                    prod_id CHAR(10) NOT NULL,
+                    vend_id CHAR(10) NOT NULL,
+                    prod_name CHAR(254) NOT NULL,
+                    prod_price DECIMAL(8,2) NOT NULL,
+                    prod_desc VARCHAR(1000) NOT NULL DEFAULT 'balabala'
+                );
+            """)
+            # 删除索引格式:CREATE INDEX 索引名 ON 表名;
+            cursor.execute("""
+                DROP INDEX index_prod_id ON TestTable;
+            """)
 
     # 课后练习
     def test_exercise1(self):

@@ -267,6 +267,51 @@ class TestSQL(TestCase):
                 {'cust_id': '1000000006', 'cust_name': 'Toy Land', 'cust_address': '123 Any Street', 'cust_city': 'New York', 'cust_state': 'NY', 'cust_zip': '11111', 'cust_country': 'USA', 'cust_contact': None, 'cust_email': None}
                 """
 
+    # MySQL基础教程4.7.4 插入多行数据
+    def test_insert_multi_raw(self):
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO Customers(
+                    cust_id, 
+                    cust_name, 
+                    cust_address, 
+                    cust_city, 
+                    cust_state, 
+                    cust_zip, 
+                    cust_country
+                )
+                VALUES (
+                    1000000006,
+                    'Toy Land',
+                    '123 Any Street',
+                    'New York',
+                    'NY',
+                    '11111',
+                    'USA'
+                ),
+                (
+                    1000000007,
+                    'Toy Land',
+                    '123 Any Street',
+                    'New York',
+                    'NY',
+                    '11111',
+                    'USA'
+                );
+            """)
+
+            cursor.execute("""
+            SELECT cust_id, cust_name
+            FROM Customers
+            WHERE cust_id IN (1000000006, 1000000007) ;
+            """)
+            for result in dictfetchall(cursor):  # 读取所有
+                print(result)
+                """
+                {'cust_id': '1000000006', 'cust_name': 'Toy Land'}
+                {'cust_id': '1000000007', 'cust_name': 'Toy Land'}
+                """
+
     # 15.1.3 插入检索出的数据
     def test_insert_select_data(self):
         """
@@ -275,7 +320,7 @@ class TestSQL(TestCase):
         """
         pass
 
-    # 15.2 从一个表复制到另一个表
+    # 15.2 从一个表复制到另一个表(复制表)
     def test_z_create_select(self):
         """
         有一种数据插入不使用INSERT语句。要将一个表的内容复制到一个全
