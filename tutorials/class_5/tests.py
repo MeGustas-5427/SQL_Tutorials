@@ -283,6 +283,43 @@ class TestSQL(TestCase):
                 {'vend_id': 'FNG01', 'prod_name': 'Queen doll'}
                 """
 
+    # 8.4.4 CASE WHEN (MySQL基础教程)
+    def test_case_when(self):
+        """根据条件改变输入值"""
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT (quantity*item_price) AS total,
+                CASE 
+                    WHEN (quantity*item_price) >= 1000 THEN '大买入'
+                    WHEN (quantity*item_price) >= 500 THEN '中买入'
+                    WHEN (quantity*item_price) >= 100 THEN '小买入'
+                    ELSE '忽略买入'
+                END AS '评价'
+                FROM OrderItems;
+                """)
+            for result in dictfetchall(cursor):  # 读取所有
+                print(result)
+                """
+                {'total': Decimal('549.00'), '评价': '中买入'}
+                {'total': Decimal('1099.00'), '评价': '大买入'}
+                {'total': Decimal('119.80'), '评价': '小买入'}
+                {'total': Decimal('89.90'), '评价': '忽略买入'}
+                {'total': Decimal('119.90'), '评价': '小买入'}
+                {'total': Decimal('574.50'), '评价': '中买入'}
+                {'total': Decimal('299.00'), '评价': '小买入'}
+                {'total': Decimal('299.00'), '评价': '小买入'}
+                {'total': Decimal('299.00'), '评价': '小买入'}
+                {'total': Decimal('224.50'), '评价': '小买入'}
+                {'total': Decimal('24.95'), '评价': '忽略买入'}
+                {'total': Decimal('59.95'), '评价': '忽略买入'}
+                {'total': Decimal('34.90'), '评价': '忽略买入'}
+                {'total': Decimal('34.90'), '评价': '忽略买入'}
+                {'total': Decimal('34.90'), '评价': '忽略买入'}
+                {'total': Decimal('622.50'), '评价': '中买入'}
+                {'total': Decimal('622.50'), '评价': '中买入'}
+                {'total': Decimal('622.50'), '评价': '中买入'}
+                """
+
     # 课后练习
     def test_exercise1(self):
         """

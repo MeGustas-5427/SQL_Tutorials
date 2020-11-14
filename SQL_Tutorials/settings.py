@@ -40,6 +40,20 @@ INSTALLED_APPS = [
     "tutorials.class_2.apps.Class2Config",
     "tutorials.class_3.apps.Class3Config",
     "tutorials.class_4.apps.Class4Config",
+    "tutorials.class_5.apps.Class5Config",
+    "tutorials.class_6.apps.Class6Config",
+    "tutorials.class_7.apps.Class7Config",
+    "tutorials.class_8.apps.Class8Config",
+    "tutorials.class_9.apps.Class9Config",
+    "tutorials.class_10.apps.Class10Config",
+    "tutorials.class_11.apps.Class11Config",
+    "tutorials.class_12.apps.Class12Config",
+    "tutorials.class_13.apps.Class13Config",
+    "tutorials.class_14.apps.Class14Config",
+    "tutorials.class_15.apps.Class15Config",
+    "tutorials.class_16.apps.Class16Config",
+    "tutorials.class_17.apps.Class17Config",
+    "tutorials.class_18.apps.Class18Config",
 ]
 
 MIDDLEWARE = [

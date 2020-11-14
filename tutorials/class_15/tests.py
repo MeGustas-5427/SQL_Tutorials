@@ -340,6 +340,57 @@ class TestSQL(TestCase):
             cursor.execute("""
                 CREATE TABLE OrdersCopy AS SELECT * FROM Orders;
             """)
+            # 这种复制方法不能复制AUTO_INCREMENT等属性. AUTO_INCREMENT等属性需要在复制后再次进行设置.
+            # 复制后VARCHAR(100)甚至可能会变成CHAR(100)
+            # 因此必须复制后用DESC确认表的结构.
+            cursor.execute("""
+                SELECT * FROM OrdersCopy;
+            """)
+            for result in namedtuplefetchall(cursor):  # 读取所有
+                print(result)
+
+            print("=" * 60)
+            # 排序后复制
+            cursor.execute("""
+                CREATE TABLE OrdersCopy2 AS 
+                SELECT * 
+                FROM Orders 
+                ORDER BY order_num DESC 
+                LIMIT 2 
+                OFFSET 1;
+            """)
+            cursor.execute("""
+                SELECT * FROM OrdersCopy2;
+            """)
+            for result in namedtuplefetchall(cursor):  # 读取所有
+                print(result)
+                """
+                Result(order_num=20008, order_date=datetime.datetime(2020, 2, 3, 0, 0), cust_id='1000000005')
+                Result(order_num=20007, order_date=datetime.datetime(2020, 1, 30, 0, 0), cust_id='1000000004')
+                """
+
+    # 7.3 仅复制表的列结构(MySQL基础教程)
+    def test_z_create_like(self):
+        # 只复制列结构, 不复制数据记录.
+        with connection.cursor() as cursor:
+            # 该方法会复制AUTO_INCREMENT和PRIMARY KEY等列的属性.
+            cursor.execute("""
+                CREATE TABLE OrdersCopy LIKE Orders;
+            """)
+
+    # 7.4.1 复制其他表的记录(MySQL基础教程)
+    def test_z_insert_into_select(self):
+        # 初始化新表
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE OrdersCopy LIKE Orders;
+            """)
+
+            # 只复制数据记录, 不复制列结构.
+            cursor.execute("""
+                  INSERT INTO OrdersCopy SELECT * FROM Orders;
+              """)
+
             cursor.execute("""
                 SELECT * FROM OrdersCopy;
             """)

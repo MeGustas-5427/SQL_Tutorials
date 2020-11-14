@@ -213,7 +213,7 @@ class TestSQL(TestCase):
     # 7.3 执行算术计算
     def test_arithmetic_calculation(self):
         """
-        SQL算术操作符 +(加), -(减), *(乘), /(除)
+        SQL算术操作符 +(加), -(减), *(乘), /(除), DIV(除后结果取整), %(除后结果取余)
 
         SELECT语句为测试,检验函数和计算提供了很好的方法.虽然SELECT通常用于从表中检索数据,
         但是省略了FROM子句后就是简单地访问和处理表达式,例如SELECT 3 * 2;将返回6,
@@ -222,18 +222,18 @@ class TestSQL(TestCase):
         """
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT prod_id, quantity, item_price, quantity*item_price AS total
+                SELECT prod_id, quantity, item_price, quantity DIV item_price AS total
                 FROM OrderItems
                 WHERE order_num = 20008;
             """)
             for result in dictfetchall(cursor):  # 读取所有
                 print(result)
                 """
-                {'prod_id': 'RGAN01', 'quantity': 5, 'item_price': Decimal('4.99'), 'total': Decimal('24.95')}
-                {'prod_id': 'BR03', 'quantity': 5, 'item_price': Decimal('11.99'), 'total': Decimal('59.95')}
-                {'prod_id': 'BNBG01', 'quantity': 10, 'item_price': Decimal('3.49'), 'total': Decimal('34.90')}
-                {'prod_id': 'BNBG02', 'quantity': 10, 'item_price': Decimal('3.49'), 'total': Decimal('34.90')}
-                {'prod_id': 'BNBG03', 'quantity': 10, 'item_price': Decimal('3.49'), 'total': Decimal('34.90')}
+                {'prod_id': 'RGAN01', 'quantity': 5, 'item_price': Decimal('4.99'), 'total': 1}
+                {'prod_id': 'BR03', 'quantity': 5, 'item_price': Decimal('11.99'), 'total': 0}
+                {'prod_id': 'BNBG01', 'quantity': 10, 'item_price': Decimal('3.49'), 'total': 2}
+                {'prod_id': 'BNBG02', 'quantity': 10, 'item_price': Decimal('3.49'), 'total': 2}
+                {'prod_id': 'BNBG03', 'quantity': 10, 'item_price': Decimal('3.49'), 'total': 2}
                 """
 
     # 课后练习

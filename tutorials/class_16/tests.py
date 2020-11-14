@@ -246,7 +246,6 @@ class TestSQL(TestCase):
             }            
             """
 
-
     # 16.1.2 更新指定数据多个值
     def test_update_multiple_values(self):
         """
@@ -263,6 +262,36 @@ class TestSQL(TestCase):
                 WHERE cust_id = 1000000005;
             """)
             print(Customers.objects.get(cust_id=1000000005).to_dict())
+
+            # 把quantity最少的三个更新为10000
+            cursor.execute("""
+                UPDATE OrderItems
+                SET quantity = 10000
+                ORDER BY quantity
+                LIMIT 3;
+            """)
+            for i in OrderItems.objects.all():
+                print(i.to_dict())
+                """
+                {'id': 1, 'order_item': 1, 'quantity': 100, 'item_price': '5.49'}
+                {'id': 2, 'order_item': 2, 'quantity': 100, 'item_price': '10.99'}
+                {'id': 3, 'order_item': 1, 'quantity': 20, 'item_price': '5.99'}
+                {'id': 4, 'order_item': 2, 'quantity': 10000, 'item_price': '8.99'}
+                {'id': 5, 'order_item': 3, 'quantity': 10, 'item_price': '11.99'}
+                {'id': 6, 'order_item': 1, 'quantity': 50, 'item_price': '11.49'}
+                {'id': 7, 'order_item': 2, 'quantity': 100, 'item_price': '2.99'}
+                {'id': 8, 'order_item': 3, 'quantity': 100, 'item_price': '2.99'}
+                {'id': 9, 'order_item': 4, 'quantity': 100, 'item_price': '2.99'}
+                {'id': 10, 'order_item': 5, 'quantity': 50, 'item_price': '4.49'}
+                {'id': 11, 'order_item': 1, 'quantity': 10000, 'item_price': '4.99'}
+                {'id': 12, 'order_item': 2, 'quantity': 10000, 'item_price': '11.99'}
+                {'id': 13, 'order_item': 3, 'quantity': 10, 'item_price': '3.49'}
+                {'id': 14, 'order_item': 4, 'quantity': 10, 'item_price': '3.49'}
+                {'id': 15, 'order_item': 5, 'quantity': 10, 'item_price': '3.49'}
+                {'id': 16, 'order_item': 1, 'quantity': 250, 'item_price': '2.49'}
+                {'id': 17, 'order_item': 2, 'quantity': 250, 'item_price': '2.49'}
+                {'id': 18, 'order_item': 3, 'quantity': 250, 'item_price': '2.49'}
+                """
 
     # 16.1.3 更新指定数据某个值为空值
     def test_update_to_null(self):
@@ -297,6 +326,30 @@ class TestSQL(TestCase):
                 WHERE order_num = 20005;
             """)
             self.assertFalse(OrderItems.objects.filter(order_num=20005).exists())
+
+
+            # delete不支持OFFSET
+            for i in OrderItems.objects.order_by("-id").all():
+                print(i.to_dict())
+                """
+                {'id': 18, 'order_item': 3, 'quantity': 250, 'item_price': '2.49'}
+                {'id': 17, 'order_item': 2, 'quantity': 250, 'item_price': '2.49'}
+                {'id': 16, 'order_item': 1, 'quantity': 250, 'item_price': '2.49'}
+                {'id': 15, 'order_item': 5, 'quantity': 10, 'item_price': '3.49'}
+                """
+            print("=")
+            cursor.execute("""
+                DELETE 
+                FROM OrderItems
+                ORDER BY id DESC
+                LIMIT 2;
+            """)
+            for i in OrderItems.objects.order_by("-id").all():
+                print(i.to_dict())
+                """
+                {'id': 16, 'order_item': 1, 'quantity': 250, 'item_price': '2.49'}
+                {'id': 15, 'order_item': 5, 'quantity': 10, 'item_price': '3.49'}
+                """
 
         """
         提示：友好的外键

@@ -246,7 +246,7 @@ class TestSQL(TestCase):
 
             # 删除TestTable表
             cursor.execute("""
-                DROP TABLE TestTable;
+                DROP TABLE IF EXISTS TestTable;  # IF EXISTS:如果存在则删除TestTable
             """)
 
     # 17.4 重命名表
@@ -327,7 +327,6 @@ class TestSQL(TestCase):
                 ALTER TABLE Vendors
                 ADD vend_web CHAR(255); 
             """)
-
 
     def test_z_exercise2(self):
         """

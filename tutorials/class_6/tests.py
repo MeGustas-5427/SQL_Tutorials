@@ -293,7 +293,7 @@ class TestSQL(TestCase):
             cursor.execute("""
                 SELECT prod_name, prod_desc 
                 FROM Products 
-                WHERE NOT prod_desc LIKE '%toy%'
+                WHERE prod_desc NOT LIKE '%toy%'
                 ORDER BY prod_name;
             """)
             for result in namedtuplefetchall(cursor):  # 读取所有

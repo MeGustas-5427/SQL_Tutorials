@@ -225,6 +225,26 @@ class TestSQL(TestCase):
                 Result(cust_name='Kids Place', cust_contact='Michelle Green')
                 """
 
+    # 8.2.1(3) SUBSTRING函数
+    def test_substring_func(self):
+        """
+        从第X个字符开始截取Y个字符
+        """
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT cust_contact, SUBSTRING(cust_contact, 2, 4) AS sub
+                FROM Customers;
+            """)
+            for result in namedtuplefetchall(cursor):  # 读取所有
+                print(result)
+                """
+                Result(cust_contact='John Smith', sub='ohn ')
+                Result(cust_contact='Michelle Green', sub='iche')
+                Result(cust_contact='Jim Jones', sub='im J')
+                Result(cust_contact='Denise L. Stephens', sub='enis')
+                Result(cust_contact='Kim Howard', sub='im H')
+                """
+
     # 8.2.2 日期和时间处理函数
     def test_date_and_time_func(self):
         with connection.cursor() as cursor:
