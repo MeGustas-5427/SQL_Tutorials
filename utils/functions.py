@@ -26,6 +26,12 @@ def dictfetchall(cursor):
     ]
 
 
+def dictfetchone(cursor):
+    "从cursor获取数据转换成一个字典"
+    columns = [col[0] for col in cursor.description]
+    return dict(zip(columns, cursor.fetchone()))
+
+
 def namedtuplefetchall(cursor):
     "从cursor获取所有行数据转换成一个namedtuple数据类型"
     desc = cursor.description

@@ -195,6 +195,7 @@ class TestSQL(TestCase):
                 SELECT vend_name, prod_name, prod_price
                 FROM Vendors
                 INNER JOIN Products ON Vendors.vend_id = Products.vend_id
+                # INNER JOIN Products USING(vend_id)  # 若两个联结列的名称相同,可以使用USING简化写法
             """)
             """
             分析 ▼
@@ -272,7 +273,7 @@ class TestSQL(TestCase):
             cursor.execute("""
                 SELECT cust_name, cust_contact
                 FROM Customers
-                INNER JOIN Orders O on Customers.cust_id = O.cust_id
+                INNER JOIN Orders O USING(cust_id)
                 INNER JOIN OrderItems OI on O.order_num = OI.order_num
                 WHERE OI.prod_id = 'RGAN01';
             """)

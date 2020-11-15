@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.db import connection
 
 from tutorials.create_table.models import *
-from utils.functions import namedtuplefetchall, dictfetchall
+from utils.functions import namedtuplefetchall, dictfetchall, dictfetchone
 
 
 # Create your tests here.
@@ -206,161 +206,115 @@ class TestSQL(TestCase):
         OrderItems.objects.all().delete()
         Products.objects.all().delete()
 
-    # 11.4.3 当插入的数据与视图的条件不匹配时报错(MySQL基础教程)
-    def test_with_check_option(self):
+    """
+    MyISAM:  拥有较高的插入、查询速度，但不支持事务。
+    InnoDB:  事务型数据库的首选引擎，支持事务安全表（ACID），支持行锁定和外键. 默认的MySQL引擎。
+    MEMORY:  存储引擎将表中的数据存储到内存中，未查询和引用其他表数据提供快速访问。如果只是临时存放数据，数据量不大，
+             并且不需要较高的数据安全性，可以选择将数据保存在内存中的Memory引擎，MySQL中使用该引擎作为临时表，存放
+             查询的中间结果。数据的处理速度很快但是安全性不高。
+    Archive: 如果只有INSERT和SELECT操作，可以选择Archive，Archive支持高并发的插入操作，但是本身不是事务安全的。
+             Archive非常适合存储归档数据，如记录日志信息可以使用Archive
+    """
+
+    # 13.2.1 确认存储引擎(MySQL基础教程)
+    def test_inquiry_engine(self):
         with connection.cursor() as cursor:
-            # 创建视图
-            cursor.execute("""
-                CREATE OR REPLACE VIEW VendorLocations AS  # OR REPLACE:删除已存在的同名视图,创建新的视图.
-                SELECT *
-                FROM Vendors
-                WHERE vend_state IN ('CA')
-                WITH CHECK OPTION;  # 防止INSERT的数据与WHERE条件不匹配的记录, 造成麻烦的事情.
-            """)
+            cursor.execute("SHOW CREATE TABLE OrderItems")
+            result = dictfetchone(cursor)
+            print(result)
+            # ENGINE=xxxx 的部分确认存储引擎.
+            """
+            {
+                "Table": "OrderItems",
+                "Create Table": 
+                    "CREATE TABLE `OrderItems` (\n  "
+                    "`id` int NOT NULL AUTO_INCREMENT,\n  "
+                    "`order_item` int NOT NULL,\n  "
+                    "`quantity` int NOT NULL,\n  "
+                    "`item_price` decimal(8,2) NOT NULL,\n  "
+                    "`order_num` int NOT NULL,\n  "
+                    "`prod_id` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,\n  "
+                    "PRIMARY KEY (`id`),\n  "
+                    "UNIQUE KEY `OrderItems_order_num_order_item_c405df47_uniq` (`order_num`,`order_item`),\n  "
+                    "KEY `OrderItems_prod_id_9bdcba25_fk_Products_prod_id` (`prod_id`),\n  "
+                    "CONSTRAINT `OrderItems_order_num_ce305812_fk_Orders_order_num` "
+                    "FOREIGN KEY (`order_num`) "
+                    "REFERENCES `Orders` (`order_num`),\n  "
+                    "CONSTRAINT `OrderItems_prod_id_9bdcba25_fk_Products_prod_id` "
+                    "FOREIGN KEY (`prod_id`) "
+                    "REFERENCES `Products` (`prod_id`)\n) "
+                    "ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+            }
+            """
 
-            # 11.5.2 修改视图结构(MySQL基础教程)
-            cursor.execute("""
-                ALTER VIEW VendorLocations AS
-                SELECT *
-                FROM Customers;
-            """)
-
-            # 11.5.3 删除视图(MySQL基础教程)
-            cursor.execute("""
-                DROP VIEW IF EXISTS VendorLocations;
-            """)
-
-    # 18.2.1 利用视图简化复杂得联结
-    def test_update_a_value(self):
+    # 13.2.2 修改存储引擎(MySQL基础教程)
+    def test_update_engine(self):
         with connection.cursor() as cursor:
-            # 创建视图
             cursor.execute("""
-                CREATE VIEW ProductCustomers AS
-                SELECT cust_name, cust_contact, OI.prod_id
-                FROM Customers
-                INNER JOIN Orders O on Customers.cust_id = O.cust_id
-                INNER JOIN OrderItems OI on O.order_num = OI.order_num;
+                CREATE TABLE TestTable
+                (
+                    prod_id CHAR(10) NOT NULL,
+                    vend_id CHAR(10) NOT NULL,
+                    prod_name CHAR(254) NOT NULL,
+                    prod_price DECIMAL(8,2) NOT NULL,
+                    prod_desc VARCHAR(1000) NOT NULL DEFAULT 'balabala'
+                );
             """)
-            # 使用视图检索
-            cursor.execute("""
-            SELECT cust_name, cust_contact
-            FROM ProductCustomers
-            WHERE prod_id = 'RGAN01';
-            """)
-            for result in namedtuplefetchall(cursor):  # 读取所有
+            cursor.execute("ALTER TABLE TestTable ENGINE=MEMORY;")
+            cursor.execute("SHOW CREATE TABLE TestTable")
+            result = dictfetchone(cursor)
+            print(result)
+            """
+            {
+                'Table': 'TestTable', 
+                'Create Table': 
+                    "CREATE TABLE `TestTable` (\n  "
+                        "`prod_id` char(10) COLLATE utf8mb4_unicode_ci NOT NULL,\n  "
+                        "`vend_id` char(10) COLLATE utf8mb4_unicode_ci NOT NULL,\n  "
+                        "`prod_name` char(254) COLLATE utf8mb4_unicode_ci NOT NULL,\n  "
+                        "`prod_price` decimal(8,2) NOT NULL,\n  "
+                        "`prod_desc` varchar(1000) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'balabala'\n"
+                    ") ENGINE=MEMORY DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+            }
+            """
+
+    # 13.4.2 开启事务(MySQL基础教程)
+    def test_start_transaction(self):
+        with connection.cursor() as cursor:
+            # 首次删除并回滚
+            cursor.execute("START TRANSACTION;")  # 开启事务(cursor.execute("BEGIN;")也可以开启事务)
+            cursor.execute("DELETE FROM OrderItems WHERE quantity>0;")
+            cursor.execute("SELECT id FROM OrderItems;")
+            print("1:DELETE==>")
+            for result in namedtuplefetchall(cursor): # 读取所有
                 print(result)
-                """
-                Result(cust_name='Fun4All', cust_contact='Denise L. Stephens')
-                Result(cust_name='The Toy Store', cust_contact='Kim Howard')
-                """
-
-    # 18.2.2 用视图重新格式化检索除的数据
-    def test_update_multiple_values(self):
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                CREATE VIEW VendorLocations AS
-                SELECT CONCAT(RTRIM(vend_name), '(', RTRIM(vend_country), ')') AS vend_title
-                FROM Vendors;
-            """)
-            cursor.execute("""
-                SELECT * FROM VendorLocations
-            """)
-            for result in namedtuplefetchall(cursor):  # 读取所有
-                print(result)
-                """
-                Result(vend_title='Bear Emporium(USA)')
-                Result(vend_title='Bears R Us(USA)')
-                Result(vend_title='Doll House Inc.(USA)')
-                Result(vend_title='Fun and Games(England)')
-                Result(vend_title='Furball Inc.(USA)')
-                Result(vend_title='Jouets et ours(France)')
-                """
-
-    # 18.2.3 用视图过滤不想要的数据
-    def test_update_to_null(self):
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                CREATE VIEW CustomerEMailList AS
-                SELECT cust_id, cust_name, cust_email
-                FROM Customers
-                WHERE cust_email IS NOT NULL;
-            """)
-            cursor.execute("""
-                SELECT * FROM CustomerEMailList
-            """)
-            for result in namedtuplefetchall(cursor):  # 读取所有
-                print(result)
-                """
-                Result(cust_id='1000000001', cust_name='Village Toys', cust_email='sales@villagetoys.com')
-                Result(cust_id='1000000003', cust_name='Fun4All', cust_email='jjones@fun4all.com')
-                Result(cust_id='1000000004', cust_name='Fun4All', cust_email='dstephens@fun4all.com')
-                """
-
-    # 18.2.4 使用视图与计算字段
-    def test_delete_date(self):
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                CREATE VIEW OrderItemsExpanded AS
-                SELECT order_num, quantity, item_price, quantity*item_price AS expanded_price
-                FROM OrderItems;
-            """)
-            cursor.execute("""
-                SELECT *
-                FROM OrderItemsExpanded
-                WHERE order_num = 20008;
-            """)
-            for result in namedtuplefetchall(cursor):  # 读取所有
-                print(result)
-                """
-                Result(order_num=20008, quantity=5, item_price=Decimal('4.99'), expanded_price=Decimal('24.95'))
-                Result(order_num=20008, quantity=5, item_price=Decimal('11.99'), expanded_price=Decimal('59.95'))
-                Result(order_num=20008, quantity=10, item_price=Decimal('3.49'), expanded_price=Decimal('34.90'))
-                Result(order_num=20008, quantity=10, item_price=Decimal('3.49'), expanded_price=Decimal('34.90'))
-                Result(order_num=20008, quantity=10, item_price=Decimal('3.49'), expanded_price=Decimal('34.90'))
-                """
-
-    # 11.2.2 通过视图更新列的值(MySQL基础教程)
-    # 如果更新了视图的值, 基表的值也会随之更新. 因为视图不仅仅是基表的一部分,
-    # 它也是指向基表数据的窗口. 相反, 基表的数据更新, 视图对应的数据也会更新.
-
-    # 11.4 限制通过视图写入(MySQL基础教程)
-    # 如果再使用了UNION,JOIN,子查询的视图中,不能执行INSERT和UPDATE.
-    # 如果只是从一个表中创建的视图,那么执行INSERT和UPDATE是没有任何问题的.
-
-    # 课后练习
-    def test_exercise1(self):
-        """
-        1. Create a view called CustomersWithOrders that contains all of the columns
-           in Customers, but only includes those who have placed orders. Hint, you
-           can JOIN the Orders table to filter just the customers you want. Then use
-           a SELECT to make sure you have the right data.
-        """
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                CREATE VIEW CustomersWithOrders AS
-                SELECT Customers.*
-                FROM Customers
-                RIGHT OUTER JOIN Orders O on Customers.cust_id = O.cust_id;
-            """)
-
-            cursor.execute("""
-                SELECT * FROM CustomersWithOrders;
-            """)
-            for result in namedtuplefetchall(cursor):  # 读取所有
+            cursor.execute("ROLLBACK;")  # 回滚复原
+            print("1:ROLLBACK==>")
+            cursor.execute("SELECT id FROM OrderItems;")
+            for result in namedtuplefetchall(cursor): # 读取所有
                 print(result)
 
-    def test_exercise2(self):
-        """
-        2. What is wrong with the following SQL statement? (Try to figure it out
-           without running it):
-        """
-        """
-        CREATE VIEW OrderItemsExpanded AS
-        SELECT order_num,
-               prod_id,
-               quantity,
-               item_price,
-               quantity*item_price AS expanded_price
-        FROM OrderItems
-        ORDER BY order_num;
-        """
+            # 再次删除并回滚
+            cursor.execute("DELETE FROM OrderItems WHERE quantity>0;")
+            cursor.execute("SELECT id FROM OrderItems;")
+            print("2:DELETE==>")
+            for result in namedtuplefetchall(cursor): # 读取所有
+                print(result)
+            cursor.execute("ROLLBACK;")  # 回滚复原
+            print("2:ROLLBACK==>")
+            cursor.execute("SELECT id FROM OrderItems;")
+            for result in namedtuplefetchall(cursor): # 读取所有
+                print(result)
+
+            # 再次删除并提交(提交后即使回滚也复原不了数据)
+            cursor.execute("DELETE FROM OrderItems WHERE quantity>0;")
+            cursor.execute("SELECT id FROM OrderItems;")
+            print("3:DELETE==>")
+            for result in namedtuplefetchall(cursor): # 读取所有
+                print(result)
+            cursor.execute("COMMIT;")  # 提交
+            cursor.execute("ROLLBACK;")  # 回滚复原
+            print("3:ROLLBACK==>")
+            cursor.execute("SELECT id FROM OrderItems;")
+            for result in namedtuplefetchall(cursor): # 读取所有
+                print(result)

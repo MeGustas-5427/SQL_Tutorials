@@ -30,11 +30,16 @@
 
 ### 第14章(tutorials-class_14) - 合并查询
 
-### 第15章(tutorials-class_15) - 插入数据
+### 第15章(tutorials-class_15) - 插入数据(含表复制)
 
 ### 第16章(tutorials-class_16) - 更新和删除数据
 
-### 第17章(tutorials-class_17) - 创建和处理表
+### 第17章(tutorials-class_17) - 创建和处理表(含索引)
 
 ### 第18章(tutorials-class_18) - 使用视图
 
+### 第19章(tutorials-class_19) - 存储过程与存储函数
+
+### 第20章(tutorials-class_20) - 使用触发器
+
+### 第21章(tutorials-class_21) - 存储引擎与事务

@@ -123,14 +123,15 @@ class TestSQL(TestCase):
     # 14.2.1 使用UNION
     def test_union(self):
         """
-        使用UNION很简单，所要做的只是给出每条SELECT语句，在各条语句
-        之间放上关键字UNION。
+        *UNION可以把多个相同结构的表合并为一张表, 相当于pandas.concat()函数.*
+
+        使用UNION很简单，所要做的只是给出每条SELECT语句，在各条语句之间放上关键字UNION。
         """
         with connection.cursor() as cursor:
             """
             举个例子，假如需要Illinois、Indiana和Michigan等美国几个州的所有顾
             客的报表，还想包括不管位于哪个州的所有的FuMAll。当然可以利用 
-            WHERE子句来完成此工作，不过这次我们使用UNI0N。
+            WHERE子句来完成此工作，不过这次我们使用UNION。
             """
             # cursor.execute("""
             #     SELECT cust_name, cust_contact, cust_email
@@ -228,6 +229,8 @@ class TestSQL(TestCase):
                 UNION的一种形式，它完成WHERE子句完成不了的工作。如果确实需
                 要每个条件的匹配行全部出现（包括重复行），就必须使用
                 UNION ALL而不是WHERE。
+            
+            使用UNION ALL能提高查询效率.
             """
             for result in namedtuplefetchall(cursor):  # 读取所有
                 print(result)
@@ -270,7 +273,7 @@ class TestSQL(TestCase):
                 为相同的结果可利用联结得到。
             提示：操作多个表
                 为了简单，本课中的例子都是使用UNION来组合针对同一表的多个查 
-                询。实际上，UMI0N在需要组合多个表的数据时也很有用，即使是有 
+                询。实际上，UNION在需要组合多个表的数据时也很有用，即使是有 
                 不匹配列名的表，在这种情况下，可以将UNION与别名组合，检索 
                 一个结果集.
             """

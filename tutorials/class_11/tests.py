@@ -120,14 +120,9 @@ class TestSQL(TestCase):
         Products.objects.all().delete()
 
     # 11.1
-    """    
-    
+    """
     现在得到了订购物品RGAN01的所有顾客的ID。下一步是检索这些顾客ID的顾客倍息。检索两列
     的SQL语句为：
-    
-
-    
-
     """
 
     # 11.2利用子查询进行过滤
@@ -198,6 +193,27 @@ class TestSQL(TestCase):
                 """
                 {'cust_name': 'Fun4All', 'cust_contact': 'Denise L. Stephens'}
                 {'cust_name': 'The Toy Store', 'cust_contact': 'Kim Howard'}
+                """
+
+            print("=" * 60)
+            """使用子查询获取平均价格, 再过滤大于平均价格的数据."""
+            cursor.execute("""
+                SELECT prod_id, (quantity * item_price) AS price
+                FROM OrderItems
+                WHERE (quantity * item_price) >= (
+                    SELECT AVG(quantity * item_price)
+                    FROM OrderItems
+                );
+                """)
+            for result in dictfetchall(cursor):  # 读取所有
+                print(result)
+                """
+                {'prod_id': 'BR01', 'price': Decimal('549.00')}
+                {'prod_id': 'BR03', 'price': Decimal('1099.00')}
+                {'prod_id': 'BR03', 'price': Decimal('574.50')}
+                {'prod_id': 'BNBG01', 'price': Decimal('622.50')}
+                {'prod_id': 'BNBG02', 'price': Decimal('622.50')}
+                {'prod_id': 'BNBG03', 'price': Decimal('622.50')}
                 """
 
     # 11.3 作为计算字段使用子查询
