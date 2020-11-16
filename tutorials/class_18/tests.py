@@ -285,6 +285,11 @@ class TestSQL(TestCase):
                 FROM Customers
                 WHERE cust_email IS NOT NULL;
             """)
+            """
+            说明：WHERE子句与WHERE子句
+                从视图检索数据时如果使用了一条WHERE子句，则两组子句（一组在 
+                视图中，另一组是传递给视图的）将自动组合。
+            """
             cursor.execute("""
                 SELECT * FROM CustomerEMailList
             """)

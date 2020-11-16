@@ -159,6 +159,12 @@ class TestSQL(TestCase):
                 )
                 CHARSET=utf8mb4;  # 可以选择性增加指定字符编码, 但一般创建数据库设置了字符编码为utf8mb4的话就不用再设置了.
             """)
+            """
+            提示：替换现有的表
+                在创建新的表时，指定的表名必须不存在，否则会出错。防止意外覆盖已有的表，
+                SQL要求首先手工删除该表（请参阅后面的内容），然后再重建它，而不是简单地
+                用创建表语句覆盖它。
+            """
             print(cursor.fetchone())
 
     # 17.1.2 使用NULL值
@@ -175,6 +181,13 @@ class TestSQL(TestCase):
                     prod_desc VARCHAR(1000)   # NULL为默认设置, 可以不填NULL
                 );
             """)
+            """
+            注意：理解NULL
+                不要把NULL值与空字符串相混淆. NULL值是没有值，不是空字符串。 
+                如果指定''(两个单引号，其间没有字符)，这在NOT NULL列中是允 
+                许的。空字符串是一个有效的值，它不是无值。NULL值用关键字NULL 
+                而不是空字符串指定。
+            """
             print(cursor.fetchone())
 
     # 17.1.3 指定默认值
@@ -194,6 +207,27 @@ class TestSQL(TestCase):
 
     # 17.2 更新表
     def test_alter_table(self):
+        """
+        更新表定义,可以使用ALTER TABLE语句.虽然所有的DBMS都支持ALTER TABLE,
+        但它们所允许更新的内容差别很大.以下是使用ALTER TABLE时需要考虑的事情。
+            - 理想情况下，不要在表中包含数据时对其进行更新。应该在表的设计
+              过程中充分考虑未来可能的需求，避免今后对表的结构做大改动。
+            - 所有的DBMS都允许给现有的表增加列，不过对所增加列的数据类型
+              (以及NULL和DEFAULT的使用）有所限制。
+            - 许多DBMS不允许删除或更改表中的列。
+            - 多数DBMS允许重新命名表中的列。
+            - 许多DBMS限制对已经填有数据的列进行更改，对未填有数据的列几
+              乎没有限制。
+
+        复杂的表结构更改一般需要手动删除过程，它涉及以下步骤：
+            (1) 用新的列布局创建一个新表；
+            (2) 使用INSERT SELECT语句从旧表复制数据到新表。
+                有必要的话，可以使用转换函数和计算字段；
+            (3) 检验包含所需数据的新表；
+            (4) 重命名旧表（如果确定，可以删除它）；
+            (5) 用旧表原来的名字重命名新表；
+            (6) 根据需要，重新创建触发器、存储过程、索引和外键。
+        """
         with connection.cursor() as cursor:
             cursor.execute("""
                 CREATE TABLE TestTable
@@ -223,8 +257,6 @@ class TestSQL(TestCase):
                 MODIFY vend_id CHAR(10) NOT NULL FIRST;  # 修改列的顺序(必须含数据类型和相关设置, 即使不变也要填)
             """)
 
-
-
             # 初始化AUTO_INCREMENT
             cursor.execute("""
                 ALTER TABLE TestTable
@@ -248,6 +280,13 @@ class TestSQL(TestCase):
             cursor.execute("""
                 DROP TABLE IF EXISTS TestTable;  # IF EXISTS:如果存在则删除TestTable
             """)
+            """
+            提示: 使用关系规则防止意外删除
+                许多DBMS允许强制实施有关规则，防止删除与其他表相关联的表。在 
+                实施这些规则时，如果对某个表发布一条DROP TABLE语句，且该表是 
+                某个关系的组成部分，则DBMS将阻止这条语句执行，直到该关系被删 
+                除为止。如果允许，应该启用这些选项，它能防止意外删除有用的表。
+            """
 
     # 17.4 重命名表
     def test_rename_table(self):
