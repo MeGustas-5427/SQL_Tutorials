@@ -259,6 +259,51 @@ class TestSQL(TestCase):
                 Result(order_num=20008, items=5)
                 """
 
+    # WITH ROLLUP(MYSQL)
+    def test_with_rollup(self):
+        """
+        http://mysql.taobao.org/monthly/2019/08/08/
+        通常情况下，我们不光需要这种最高层次的统计结果，也需要在更低的层次进行分析。
+        比如说，某个order_num的某个order_item的总和，以及某个order_num的总和。
+        为了达到这样的效果，我们可能需要对 Group By List 中的属性列进行调整，并
+        重新执行查询语句得到我们需要的结果。但是 ROLLUP 功能使得我们可以仅通过一条
+        查询语句实现上述效果
+        """
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT order_num, order_item, COUNT(*) AS items
+                FROM OrderItems 
+                GROUP BY order_num, order_item WITH ROLLUP;
+            """)
+            for result in namedtuplefetchall(cursor):  # 读取所有
+                print(result)
+                """
+                Result(order_num=20005, order_item=1, items=1)
+                Result(order_num=20005, order_item=2, items=1)
+                Result(order_num=20005, order_item=None, items=2)
+                Result(order_num=20006, order_item=1, items=1)
+                Result(order_num=20006, order_item=2, items=1)
+                Result(order_num=20006, order_item=3, items=1)
+                Result(order_num=20006, order_item=None, items=3)
+                Result(order_num=20007, order_item=1, items=1)
+                Result(order_num=20007, order_item=2, items=1)
+                Result(order_num=20007, order_item=3, items=1)
+                Result(order_num=20007, order_item=4, items=1)
+                Result(order_num=20007, order_item=5, items=1)
+                Result(order_num=20007, order_item=None, items=5)
+                Result(order_num=20008, order_item=1, items=1)
+                Result(order_num=20008, order_item=2, items=1)
+                Result(order_num=20008, order_item=3, items=1)
+                Result(order_num=20008, order_item=4, items=1)
+                Result(order_num=20008, order_item=5, items=1)
+                Result(order_num=20008, order_item=None, items=5)
+                Result(order_num=20009, order_item=1, items=1)
+                Result(order_num=20009, order_item=2, items=1)
+                Result(order_num=20009, order_item=3, items=1)
+                Result(order_num=20009, order_item=None, items=3)
+                Result(order_num=None, order_item=None, items=18)
+                """
+
     # 课后练习
     def test_exercise1(self):
         """
