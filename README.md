@@ -43,3 +43,8 @@
 ### 第20章(tutorials-class_20) - 使用触发器
 
 ### 第21章(tutorials-class_21) - 存储引擎与事务
+
+
+# 《深入浅出MySQL(数据库开发、优化与管理维护)》学习笔记
+
+### 第三章(tutorials-class_22) - MySQL支持的数据类型
