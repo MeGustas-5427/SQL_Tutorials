@@ -122,3 +122,15 @@ class OrderItems(models.Model, ModelSerializationMixin):
         db_table = "OrderItems"
         # 多个字段作为一个联合唯一索引
         unique_together = ("order_num", "order_item")
+
+
+class JsonTable(models.Model, ModelSerializationMixin):
+    """"""
+
+    dict = models.JSONField()
+    list = models.JSONField()
+
+    class Meta:
+        verbose_name = "Json表"
+        verbose_name_plural = verbose_name
+        db_table = "JsonTable"
