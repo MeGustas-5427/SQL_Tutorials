@@ -47,4 +47,6 @@
 
 # 《深入浅出MySQL(数据库开发、优化与管理维护)》学习笔记
 
-### 第三章(tutorials-class_22) - MySQL支持的数据类型
+### 第三章(tutorials-class_22) - MySQL支持的数据类型[数值类型]
+
+### 第三章(tutorials-class_23) - MySQL支持的数据类型[字符串类型(SET类型)]
