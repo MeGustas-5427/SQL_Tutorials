@@ -50,3 +50,5 @@
 ### 第三章(tutorials-class_22) - MySQL支持的数据类型[数值类型]
 
 ### 第三章(tutorials-class_23) - MySQL支持的数据类型[字符串类型(SET类型)]
+
+### 第三章(tutorials-class_24) - MySQL支持的数据类型[JSON类型]
