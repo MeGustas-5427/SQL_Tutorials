@@ -260,7 +260,8 @@ class TestSQL(TestCase):
             # 初始化AUTO_INCREMENT
             cursor.execute("""
                 ALTER TABLE TestTable
-                AUTO_INCREMENT=1;  # 若表数据清除后, 可初始化AUTO_INCREMENT, 恢复从1开始自增记录
+                AUTO_INCREMENT=1;  # 若表数据清除后, 可初始化AUTO_INCREMENT, 恢复从1开始自增
+                                   # 记录, MySQL8.0之前存在bug(深入浅出MySQL 102页)
             """)
             # 删除列(DROP)
             cursor.execute("""
