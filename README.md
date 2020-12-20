@@ -57,6 +57,7 @@
 
 ### 第五章(tutorials-class_26) - 常用函数[窗口函数]
 
+### 第十章(tutorials-class_26) - 事件调度器[MySQL定时任务]
 
 # 其他学习笔记
 

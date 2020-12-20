@@ -35,5 +35,5 @@ def dictfetchone(cursor):
 def namedtuplefetchall(cursor):
     "从cursor获取所有行数据转换成一个namedtuple数据类型"
     desc = cursor.description
-    nt_result = namedtuple('Result', [col[0] for col in desc])
+    nt_result = namedtuple('Result', [col[0].replace(" ", "_") for col in desc])
     return [nt_result(*row) for row in cursor.fetchall()]
