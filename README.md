@@ -44,6 +44,7 @@
 
 ### 第21章(tutorials-class_21) - 存储引擎与事务
 
+<br>
 
 # 《深入浅出MySQL(数据库开发、优化与管理维护)》学习笔记
 
@@ -57,7 +58,9 @@
 
 ### 第五章(tutorials-class_26) - 常用函数[窗口函数]
 
-### 第十章(tutorials-class_26) - 事件调度器[MySQL定时任务]
+### 第十章(tutorials-class_27) - 事件调度器[MySQL定时任务]
+
+<br>
 
 # 其他学习笔记
 
