@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 # -*- coding:utf-8 -*-
 # __author__ = '__MeGustas__'
-import datetime
+from datetime import datetime, timedelta
+import time
 from typing import List
 
 from django.test import TestCase
@@ -29,7 +30,7 @@ class TestSQL(TestCase):
             WHERE (TABLE_SCHEMA=schema()) AND (TABLE_NAME='TestTable');
         """
 
-    def test_create_partition(self):
+    def test_partition(self):
         with connection.cursor() as cursor:
 
             # 1.创建表并设置分区, 通过查看表状态判断是否为为分区表
@@ -158,3 +159,125 @@ class TestSQL(TestCase):
             partition = view_table_row(self, cursor)
             dorp_partition(self, cursor, partition)
             add_partition(self, cursor, partition)
+
+    def test_partition_and_event_and_procedure(self):
+        """
+        结合定时任务+存储过程的自动分区
+        https://116356754.gitbooks.io/collector_ui/content/chapter1.html
+        """
+        with connection.cursor() as cursor:
+            cursor.execute('select TO_DAYS(''DATE(20210104)'');')
+            for result in dictfetchall(cursor):
+                print(result)
+
+            today = datetime.now().date()
+            yesterday = today - timedelta(days=1)
+            cursor.execute(
+                f"""
+                CREATE TABLE TestTable
+                (       # 不能使用主键/唯一键字段之外的其他字段分区(page:185页)
+                    created DATETIME
+                )
+                PARTITION BY LIST (to_days(created))(
+                    PARTITION p{yesterday.strftime("%Y%m%d")} VALUES IN (to_days('{yesterday.strftime("%Y-%m-%d")}')),
+                    PARTITION p{today.strftime("%Y%m%d")} VALUES IN (to_days('{today.strftime("%Y-%m-%d")}'))
+                );
+            """
+            )
+
+            # 存储过程(插入数据+添加分组+删除分组)
+            cursor.execute("""
+                CREATE PROCEDURE NewProc(In dbname VARCHAR(512), IN tablename VARCHAR(512))
+                BEGIN
+                INSERT INTO test_db.TestTable VALUES(NOW());
+                /* 事务回滚，其实放这里没什么作用，ALTER TABLE是隐式提交，回滚不了的。
+                    declare exit handler for sqlexception rollback;
+                    start TRANSACTION; */
+                
+                    SET @_dbname = dbname;
+                    SET @_tablename = tablename;
+                
+                    /* 到系统表查出这个表的最大编号分区，得到分区的日期。在创建分区的时候，名称就以日期格式存放，方便后面维护 */
+                    SET @maxpartition = Concat(
+                        "SELECT REPLACE(partition_name,'p','') INTO @P_MaxName FROM INFORMATION_SCHEMA.PARTITIONS WHERE TABLE_SCHEMA='",
+                        @_dbname, 
+                        "' AND table_name='", 
+                        @_tablename, 
+                        "' ORDER BY partition_ordinal_position DESC LIMIT 1;"
+                    );
+                    PREPARE stmt2 FROM @maxpartition;  # 预编译
+                    EXECUTE stmt2;
+                
+                /* 判断最大分区的时间段，如果是前半个月的，那么根据情况需要加13,14,15,16天
+                   如果是后半个月的，那么直接加15天。 +0 是为了把日期都格式化成YYYYMMDD这样的格式*/
+                    IF (DAY(@P_MaxName)<=15) THEN
+                       CASE DAY(LAST_DAY(@P_MaxName))
+                          WHEN 31 THEN SET @Max_date=DATE(DATE_ADD(@P_MaxName+0,INTERVAL 16 DAY))+0;
+                          WHEN 30 THEN SET @Max_date=DATE(DATE_ADD(@P_MaxName+0,INTERVAL 15 DAY))+0;
+                          WHEN 29 THEN SET @Max_date=DATE(DATE_ADD(@P_MaxName+0,INTERVAL 14 DAY))+0; 
+                          WHEN 28 THEN SET @Max_date=DATE(DATE_ADD(@P_MaxName+0,INTERVAL 13 DAY))+0; 
+                       END CASE;
+                    ELSE
+                       SET @Max_date=DATE(DATE_ADD(@P_MaxName+0, INTERVAL 15 DAY))+0;
+                    END IF;
+                
+                /* 修改表，在最大分区的后面增加一个分区，时间范围加半个月 */
+                    SET @s1=CONCAT(
+                        'ALTER TABLE ', 
+                        @_tablename, 
+                        ' ADD PARTITION (PARTITION p', 
+                        @Max_date,
+                        ' VALUES IN (TO_DAYS(''',
+                        DATE(@Max_date),
+                        ''')))'  /* cursor.execute('select TO_DAYS(''DATE(20210104)'');') */
+                    );
+                    PREPARE stmt2 FROM @s1;
+                    EXECUTE stmt2;
+                    
+                    /* 到系统表查出这个表的最小编号分区，得到分区的日期。*/
+                    SET @minpartition = Concat(
+                        "SELECT partition_name INTO @P_MinName FROM INFORMATION_SCHEMA.PARTITIONS WHERE TABLE_SCHEMA='",
+                        @_dbname, 
+                        "' AND table_name='", 
+                        @_tablename, 
+                        "' ORDER BY partition_ordinal_position LIMIT 1;"
+                    );
+                    PREPARE stmt2 FROM @minpartition;  # 预编译
+                    EXECUTE stmt2;
+
+                    SET @s1=CONCAT('ALTER TABLE ', @_tablename, ' DROP PARTITION ', @P_MinName, ';');
+                    # f"ALTER TABLE TestTable DROP PARTITION {min_partition};"
+                    SELECT @P_MinName;
+                    PREPARE stmt2 FROM @s1;
+                    EXECUTE stmt2;
+                    
+                    DEALLOCATE PREPARE stmt2;
+                
+                /* 提交
+                    COMMIT; */
+                END;
+            """)
+
+            # MYSQL定时任务
+            cursor.execute("""
+                CREATE EVENT IF NOT EXISTS test_event
+                ON SCHEDULE
+                EVERY 5 SECOND
+                DO
+                CALL NewProc(schema(), 'TestTable');
+            """)
+            time.sleep(4)
+            cursor.execute("""
+                SELECT 
+                PARTITION_NAME, 
+                PARTITION_DESCRIPTION AS descr,
+                PARTITION_ORDINAL_POSITION AS position
+                FROM INFORMATION_SCHEMA.PARTITIONS 
+                WHERE (TABLE_SCHEMA=schema()) AND (TABLE_NAME='TestTable');
+            """)
+            for result in dictfetchall(cursor):
+                print(result)
+
+            cursor.execute("SELECT * FROM TestTable;")
+            for result in dictfetchall(cursor):
+                print(result)
