@@ -131,6 +131,9 @@ class TestSQL(TestCase):
                     {'PARTITION_NAME': 'p2', 'descr': '2015', 'position': 2, 'TABLE_ROWS': 0}
                     {'PARTITION_NAME': 'p3', 'descr': '2025', 'position': 3, 'TABLE_ROWS': 0}
                     """
+                # 注意：使用remove移除分区是仅仅移除分区的定义，并不会删除数据和drop PARTITION不一样，
+                # 后者会连同数据一起删除。
+                # cursor.execute("ALTER TABLE TestTable REMOVE PARTITIONING;")
 
             # 5. 增加指定分区(一旦修改分区, 则全部TABLE_ROWS都清零, 重新累计)
             def add_partition(self, cursor, partition):
