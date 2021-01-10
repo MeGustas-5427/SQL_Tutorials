@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     "tutorials.create_table.apps.CreateTableConfig",
+    "tutorials.create_sakila.apps.CreateSakilaConfig",
     "tutorials.class_2.apps.Class2Config",
     "tutorials.class_3.apps.Class3Config",
     "tutorials.class_4.apps.Class4Config",
