@@ -275,7 +275,13 @@ class Film(models.Model, ModelSerializationMixin):
     YEAR_CHOICES = lambda : [(r, r) for r in range(1901, 2156)]
     release_year = models.PositiveSmallIntegerField(choices=YEAR_CHOICES() , null=True, default=None)
     language = models.ForeignKey(Language, on_delete=models.RESTRICT)
-    original_language = models.ForeignKey(Language, on_delete=models.RESTRICT, related_name="original_film")
+    original_language = models.ForeignKey(
+        Language,
+        on_delete=models.RESTRICT,
+        related_name="original_film",
+        null=True,
+        default=None,
+    )
     rental_duration = models.PositiveSmallIntegerField(default=3)
     rental_rate = models.DecimalField(max_digits=4, decimal_places=2, default='4.99')
     length = models.PositiveSmallIntegerField(null=True, default=None)
@@ -293,11 +299,27 @@ class Film(models.Model, ModelSerializationMixin):
         Commentaries = 'Commentaries'
         Deleted_Scenes = 'Deleted Scenes'
         Behind_the_Scenes = 'Behind the Scenes'
+
+    """
+    生成数据表后, 使用该语句修改字段类型即可符合表原型设计, 并且兼容SetCharField
+        ALTER TABLE film
+        MODIFY special_features 
+        SET('Trailers','Commentaries','Deleted Scenes','Behind the Scenes') 
+        DEFAULT NULL
+        COLLATE utf8mb4_general_ci;
+    设置字段的字符集排序的原因是
+    Film.objects.filter(special_features__contains="trailers").update(
+        special_features=SetF('special_features').add('Commentaries')
+    )
+    会触发以下报错:
+    MySQLdb._exceptions.OperationalError: (1267, "Illegal mix of collations (utf8mb4_general_ci,IMPLICIT) and (utf8mb4_unicode_ci,IMPLICIT) for operation 'find_in_set'")
+    因为字符集排序规则不一致导致.
+    """
     special_features = SetCharField(
         base_field=models.CharField(max_length=20),
         size=4,
-        max_length=83,  # 20*4+3个逗号
-        choices=Special,
+        max_length=83,  # 20*4+3个逗号, 这里是设置数据库该字段的最终长度
+        choices=Special,  # 该设置在model层无效
         null=True,
         default=None,
         verbose_name="特殊功能"
