@@ -101,7 +101,7 @@ class Address(models.Model, ModelSerializationMixin):
     """
     address_id = models.SmallAutoField(primary_key=True)
     address = models.CharField(max_length=50)
-    address2 = models.CharField(max_length=50)
+    address2 = models.CharField(max_length=50, null=True, default=None)
     district = models.CharField(max_length=20)
     city = models.ForeignKey(City, on_delete=models.RESTRICT)
     postal_code = models.CharField(max_length=10)
@@ -144,7 +144,11 @@ class Staff(models.Model, ModelSerializationMixin):
     password = models.CharField(max_length=40, null=True, default=None)
     picture = models.BinaryField("图片文件", null=True, default=None)
     active = models.BooleanField(default=True)
-    store = models.ForeignKey("Store", on_delete=models.RESTRICT)
+    store = models.ForeignKey(
+        "Store",
+        on_delete=models.RESTRICT,
+        db_constraint=False,  # 只能设置假关联, 否则循环关联无法添加数据
+    )
     address = models.ForeignKey(Address, on_delete=models.RESTRICT)
     last_update = models.DateTimeField(auto_now=True)
 
@@ -350,9 +354,9 @@ class Inventory(models.Model, ModelSerializationMixin):
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     # Django会自动为所有 models.ForeignKey 列创建索引
     """
-    inventory = models.AutoField(primary_key=True)
-    film = models.ForeignKey(Store, on_delete=models.RESTRICT)
-    store = models.ForeignKey(Film, on_delete=models.RESTRICT)
+    inventory_id = models.AutoField(primary_key=True)
+    film = models.ForeignKey(Film, on_delete=models.RESTRICT)
+    store = models.ForeignKey(Store, on_delete=models.RESTRICT)
     last_update = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -528,7 +532,13 @@ class Payment(models.Model, ModelSerializationMixin):
     payment_id = models.SmallAutoField(primary_key=True)
     customer = models.ForeignKey(Customer, on_delete=models.RESTRICT, verbose_name="客户")
     staff = models.ForeignKey(Staff, on_delete=models.RESTRICT, verbose_name="员工")
-    rental = models.ForeignKey(Rental, on_delete=models.RESTRICT, verbose_name="出租")
+    rental = models.ForeignKey(
+        Rental,
+        on_delete=models.RESTRICT,
+        verbose_name="出租",
+        null=True,
+        default=None
+    )
     amount = models.DecimalField(max_digits=5, decimal_places=2)
     payment_date = models.DateTimeField("支付时间")
     last_update = models.DateTimeField(auto_now=True)
