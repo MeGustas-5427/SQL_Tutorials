@@ -456,6 +456,7 @@ class FilmCategory(models.Model, ModelSerializationMixin):
             )
         ]
 
+
 class FilmActor(models.Model, ModelSerializationMixin):
     """
     CREATE TABLE film_actor (
