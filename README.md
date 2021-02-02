@@ -34,7 +34,7 @@
 
 ### 第16章(tutorials-class_16) - 更新和删除数据
 
-### 第17章(tutorials-class_17) - 创建和处理表(含索引)
+### 第17章(tutorials-class_17) - 创建和更改设计表(含索引)
 
 ### 第18章(tutorials-class_18) - 使用视图
 
@@ -62,8 +62,27 @@
 
 ### 第十四章(tutorials-class_28) - MySQL分区
 
+### 第十五章(tutorials-class_29) - 优化SQL语句的一般步骤
+    - 数据库sql相关执行频率统计
+    - 慢查询设置
+    - 实时查看sql执行
+
+### 第十五章(tutorials-class_30) - 索引问题
+
+### 第十五章(tutorials-class_31) - 实用的优化方法
+
+### 第十五章(tutorials-class_32) - 常用SQL的优化
+
+### 第十五章(tutorials-class_33) - 直方图
+
+### 第十五章(tutorials-class_34) - 使用查询重写
+
+### 第十五章(tutorials-class_35) - 常用SQL技巧
+
+
 <br>
 
 # 其他学习笔记
 
 ### SQL优化(tutorials-self_join) - SELF JOIN的应用
+### 分区实验(tutorials-partitions) - 有索引分区的表与仅有索引的表比较速度
