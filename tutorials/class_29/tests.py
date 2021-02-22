@@ -75,6 +75,7 @@ class TestSQL(TestCase):
                 """
 
     def test_explain(self):
+        """通过EXPLAIN分析低效SQL的执行计划"""
         with connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -87,6 +88,7 @@ class TestSQL(TestCase):
                   AND email = 'JANE.BENNETT@sakilacustomer.org';
             """
             )
+            # 也可以通过EXPLAIN PARTITIONS命令查看SQL所访问的分区,具体看215页.
             for result in dictfetchall(cursor):
                 print(result)
                 # 具体说明和例子在《深入浅出MySQL(数据库开发、优化与管理维护)》212页
@@ -101,13 +103,16 @@ class TestSQL(TestCase):
                                               #  SUBQUERY  子查询中的第一个
                     "table": "a",  # 输出结果集的表（表别名）
                     "partitions": None,  # 分区表命中的分区情况。非分区表该字段为空(null)
-                    "type": "ALL",  # 表示MySQL在表中找到所需行的方式，或者叫访问类型。常见访问类型如下，从上到下，性能由差到最好：
+                    "type": "ALL",  # 表示MySQL在表中找到所需行的方式，或者叫访问类型。
+                                    # 常见访问类型如下，从上到下，性能由差到最好：
                                     # ALL	        全表扫描,MySQL遍历全表来找到匹配行
                                     # index	        索引全扫描,MySQL遍历整个索引来查询匹配行,并不会扫描表
                                     # range	        索引范围扫描,常用于<、<=、>、>=、between等操作(被操作字段要有索引)
-                                    # ref	        非唯一索引扫描,使用非唯一索引或唯一索引的前缀扫描,返回匹配某个单独值的记录行
+                                    # ref	        使用非唯一索引或唯一索引的前缀扫描,返回匹配某个单独值的记录行,具体例子看213页.
                                     # eq_ref	    唯一索引扫描,类似ref，区别在于使用的索引是唯一索引,对于每个索引键值,表中只有一条记录匹配
-                                    # const,system	单表最多有一个匹配行,查询起来非常迅速,所以这个匹配行的其他列的值可以被优化器在当前查询中当作常量来处理
+                                    #               就是多表连接中使用主键primary key或者唯一索引unique index作为关联条件.
+                                    # const,system	单表最多有一个匹配行,查询起来非常迅速,所以这个匹配行的其他列的值可以被优化器在当前查询中当
+                                    #               作常量来处理,例如根据主键primary key或者唯一索引unique index进行的查询.具体例子看213页.
                                     # NULL	        不用扫描表或索引,直接就能够得到结果
                     "possible_keys": "PRIMARY",  # 表示查询可能使用的索引
                     "key": None,      # 实际使用的索引
@@ -136,3 +141,85 @@ class TestSQL(TestCase):
                     "filtered": 100.0,
                     "Extra": None,
                 }
+
+    def test_show_profile(self):
+        """
+        通过show profile分析SQL(MYSQL5.7后建议使用性能视图替代profile)
+        具体说明和例子在《深入浅出MySQL(数据库开发、优化与管理维护)》216页
+        """
+        with connection.cursor() as cursor:
+            # 查看当前MYSQL是否支持profile
+            cursor.execute("SELECT @@have_profiling;")
+            for result in dictfetchall(cursor):
+                print(result)
+                """{'@@have_profiling': 'YES'}"""
+
+            # 默认profiling是关闭的,可以通过set语句在session级别开启profiling
+            cursor.execute("set profiling=1;")
+
+            # 查看是否成功开启
+            cursor.execute("SELECT @@profiling;")
+            for result in dictfetchall(cursor):
+                print(result)
+                """{'@@profiling': 1}"""  # 成功开启
+
+            # 通过profile,用户能清楚了解SQL执行的过程
+            cursor.execute("SELECT COUNT(*) FROM payment;")
+            for result in dictfetchall(cursor):
+                print(result)
+                """{'COUNT(*)': 16049}"""
+
+            # Query_ID': 2 显示了上面的语句查询耗时.
+            cursor.execute("show profiles;")
+            for result in dictfetchall(cursor):
+                print(result)
+                """
+                {'Query_ID': 1, 'Duration': 0.00013125, 'Query': 'SELECT @@profiling'}
+                {'Query_ID': 2, 'Duration': 0.0015745, 'Query': 'SELECT COUNT(*) FROM payment'}
+                """
+
+            # 通过下面语句能够看到执行过程中线程的每个状态和消耗的时间,详解看217页.
+            cursor.execute("show profile for query 2;")
+            for result in dictfetchall(cursor):
+                print(result)
+                """
+                {'Status': 'starting', 'Duration': Decimal('0.000044')}
+                {'Status': 'checking permissions', 'Duration': Decimal('0.000004')}
+                {'Status': 'Opening tables', 'Duration': Decimal('0.000012')}
+                {'Status': 'init', 'Duration': Decimal('0.000004')}
+                {'Status': 'System lock', 'Duration': Decimal('0.000005')}
+                {'Status': 'optimizing', 'Duration': Decimal('0.000003')}
+                {'Status': 'statistics', 'Duration': Decimal('0.000011')}
+                {'Status': 'preparing', 'Duration': Decimal('0.000013')}
+                {'Status': 'executing', 'Duration': Decimal('0.001353')}  # 执行
+                {'Status': 'end', 'Duration': Decimal('0.000005')}
+                {'Status': 'query end', 'Duration': Decimal('0.000002')}
+                {'Status': 'waiting for handler commit', 'Duration': Decimal('0.000005')}
+                {'Status': 'closing tables', 'Duration': Decimal('0.000004')}
+                {'Status': 'freeing items', 'Duration': Decimal('0.000049')}
+                {'Status': 'cleaning up', 'Duration': Decimal('0.000009')}
+                """
+
+            # MYSQL支持进一步选择all,cpu,block io,context switch,page fault等明细类型查
+            # 看MYSQL在使用什么资源上耗费过高的时间,下面显示executing主要耗费在CPU上,详情看218页
+            cursor.execute("show profile cpu for query 2;")
+            for result in dictfetchall(cursor):
+                print(result)
+                """
+                {'Status': 'starting',                   'Duration': Decimal('0.000064'), 'CPU_user': Decimal('0.000064'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'checking permissions',       'Duration': Decimal('0.000006'), 'CPU_user': Decimal('0.000006'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'Opening tables',             'Duration': Decimal('0.000019'), 'CPU_user': Decimal('0.000019'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'init',                       'Duration': Decimal('0.000005'), 'CPU_user': Decimal('0.000005'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'System lock',                'Duration': Decimal('0.000007'), 'CPU_user': Decimal('0.000007'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'optimizing',                 'Duration': Decimal('0.000004'), 'CPU_user': Decimal('0.000004'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'statistics',                 'Duration': Decimal('0.000015'), 'CPU_user': Decimal('0.000015'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'preparing',                  'Duration': Decimal('0.000013'), 'CPU_user': Decimal('0.000013'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'executing',                  'Duration': Decimal('0.001277'), 'CPU_user': Decimal('0.001609'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'end',                        'Duration': Decimal('0.000049'), 'CPU_user': Decimal('0.000041'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'query end',                  'Duration': Decimal('0.000004'), 'CPU_user': Decimal('0.000004'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'waiting for handler commit', 'Duration': Decimal('0.000007'), 'CPU_user': Decimal('0.000006'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'closing tables',             'Duration': Decimal('0.000005'), 'CPU_user': Decimal('0.000005'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'freeing items',              'Duration': Decimal('0.000047'), 'CPU_user': Decimal('0.000047'), 'CPU_system': Decimal('0.000000')}
+                {'Status': 'cleaning up',                'Duration': Decimal('0.000010'), 'CPU_user': Decimal('0.000012'), 'CPU_system': Decimal('0.000000')}
+
+                """
