@@ -96,36 +96,36 @@ class TestSQL(TestCase):
                 _ = {
                     "id": 1,
                     "select_type": "SIMPLE",  # 表示SELECT的类型，常见的取值有：
-                                              #   类型	        说明
-                                              #  SIMPLE	   简单表，不使用表连接或子查询
-                                              #  PRIMARY   主查询，即外层的查询
-                                              #  UNION	   UNION中的第二个或者后面的查询语句
-                                              #  SUBQUERY  子查询中的第一个
+                    #   类型	        说明
+                    #  SIMPLE	   简单表，不使用表连接或子查询
+                    #  PRIMARY   主查询，即外层的查询
+                    #  UNION	   UNION中的第二个或者后面的查询语句
+                    #  SUBQUERY  子查询中的第一个
                     "table": "a",  # 输出结果集的表（表别名）
                     "partitions": None,  # 分区表命中的分区情况。非分区表该字段为空(null)
                     "type": "ALL",  # 表示MySQL在表中找到所需行的方式，或者叫访问类型。
-                                    # 常见访问类型如下，从上到下，性能由差到最好：
-                                    # ALL	        全表扫描,MySQL遍历全表来找到匹配行
-                                    # index	        索引全扫描,MySQL遍历整个索引来查询匹配行,并不会扫描表
-                                    # range	        索引范围扫描,常用于<、<=、>、>=、between等操作(被操作字段要有索引)
-                                    # ref	        使用非唯一索引或唯一索引的前缀扫描,返回匹配某个单独值的记录行,具体例子看213页.
-                                    # eq_ref	    唯一索引扫描,类似ref，区别在于使用的索引是唯一索引,对于每个索引键值,表中只有一条记录匹配
-                                    #               就是多表连接中使用主键primary key或者唯一索引unique index作为关联条件.
-                                    # const,system	单表最多有一个匹配行,查询起来非常迅速,所以这个匹配行的其他列的值可以被优化器在当前查询中当
-                                    #               作常量来处理,例如根据主键primary key或者唯一索引unique index进行的查询.具体例子看213页.
-                                    # NULL	        不用扫描表或索引,直接就能够得到结果
+                    # 常见访问类型如下，从上到下，性能由差到最好：
+                    # ALL	        全表扫描,MySQL遍历全表来找到匹配行
+                    # index	        索引全扫描,MySQL遍历整个索引来查询匹配行,并不会扫描表
+                    # range	        索引范围扫描,常用于<、<=、>、>=、between等操作(被操作字段要有索引)
+                    # ref	        使用非唯一索引或唯一索引的前缀扫描,返回匹配某个单独值的记录行,具体例子看213页.
+                    # eq_ref	    唯一索引扫描,类似ref，区别在于使用的索引是唯一索引,对于每个索引键值,表中只有一条记录匹配
+                    #               就是多表连接中使用主键primary key或者唯一索引unique index作为关联条件.
+                    # const,system	单表最多有一个匹配行,查询起来非常迅速,所以这个匹配行的其他列的值可以被优化器在当前查询中当
+                    #               作常量来处理,例如根据主键primary key或者唯一索引unique index进行的查询.具体例子看213页.
+                    # NULL	        不用扫描表或索引,直接就能够得到结果
                     "possible_keys": "PRIMARY",  # 表示查询可能使用的索引
-                    "key": None,      # 实际使用的索引
+                    "key": None,  # 实际使用的索引
                     "key_len": None,  # 使用索引字段的长度
-                    "ref": None,      # 使用哪个列或常数与key一起从表中选择行
-                    "rows": 599,      # 扫描行的数量
+                    "ref": None,  # 使用哪个列或常数与key一起从表中选择行
+                    "rows": 599,  # 扫描行的数量
                     "filtered": 10.0,  # 存储引擎返回的数据在server层过滤后，剩下多少满足查询的记录数量的比例(百分比)
                     "Extra": "Using where",  # 执行情况的说明和描述，包含不适合在其他列中显示但是对执行计划非常重要的额外信息
-                                             # 最主要的有一下四种：
-                                             # Using Index	  表示索引覆盖，不会回表查询
-                                             # Using Where	  表示进行了回表查询
-                                             # Using Index Condition  表示进行了ICP优化
-                                             # Using Flesort  表示MySQL需额外排序操作, 不能通过索引顺序达到排序效果
+                    # 最主要的有一下四种：
+                    # Using Index	  表示索引覆盖，不会回表查询
+                    # Using Where	  表示进行了回表查询
+                    # Using Index Condition  表示进行了ICP优化
+                    # Using Flesort  表示MySQL需额外排序操作, 不能通过索引顺序达到排序效果
                 }
                 _ = {
                     "id": 1,
@@ -221,5 +221,298 @@ class TestSQL(TestCase):
                 {'Status': 'closing tables',             'Duration': Decimal('0.000005'), 'CPU_user': Decimal('0.000005'), 'CPU_system': Decimal('0.000000')}
                 {'Status': 'freeing items',              'Duration': Decimal('0.000047'), 'CPU_user': Decimal('0.000047'), 'CPU_system': Decimal('0.000000')}
                 {'Status': 'cleaning up',                'Duration': Decimal('0.000010'), 'CPU_user': Decimal('0.000012'), 'CPU_system': Decimal('0.000000')}
-
                 """
+
+    def test_trace(self):
+        """
+        trace跟踪SQL,了解为什么优化器选择A执行计划而不选择B执行计划.
+        具体说明和例子在《深入浅出MySQL(数据库开发、优化与管理维护)》219页
+        """
+        with connection.cursor() as cursor:
+            # 使用方式:首先打开trace,设置格式为JSON,设置trace最大能够使用的内存大小,
+            #         避免分析过程种因为默认内存过小而不能够完整显示.
+            cursor.execute('SET OPTIMIZER_TRACE="enabled=on",END_MARKERS_IN_JSON=on;')
+            cursor.execute("SET OPTIMIZER_TRACE_MAX_MEM_SIZE=1000000;")
+
+            cursor.execute(
+                """
+                SELECT rental_id
+                FROM rental
+                WHERE rental_date>= '2005-05-25 04:00:00' 
+                and rental_date <= '2005-05-25 05:00:00'
+                and inventory_id=4466;
+            """
+            )
+            for result in dictfetchall(cursor):
+                print(result)
+                """{'rental_id': 39}"""
+
+            cursor.execute(
+                """
+                select *
+                from information_schema.OPTIMIZER_TRACE;
+            """
+            )
+            for result in dictfetchall(cursor):
+                print(result)
+
+                跟踪文件 = {
+                    "QUERY": "SELECT rental_id\n"
+                             "FROM rental\n"
+                             "WHERE rental_date>= '2005-05-25 04:00:00' \n"
+                             "and rental_date <= '2005-05-25 05:00:00'\n"
+                             "and inventory_id=4466",
+                    "TRACE": {
+                        "steps": [
+                            {
+                                "join_preparation": {
+                                    "select#": 1,
+                                    "steps": [
+                                        {
+                                            "expanded_query": "/* select#1 */ select `rental`.`rental_id` AS `rental_id` from `rental` where ((`rental`.`rental_date` >= \'2005-05-25 04:00:00\') and (`rental`.`rental_date` <= \'2005-05-25 05:00:00\') and (`rental`.`inventory_id` = 4466))"
+                                        }
+                                    ] # /* steps */
+                                }  # /* join_preparation */
+                            },
+                            {
+                                "join_optimization": {
+                                    "select#": 1,
+                                    "steps": [
+                                        {
+                                            "condition_processing": {
+                                                "condition": "WHERE",
+                                                "original_condition": "((`rental`.`rental_date` >= \'2005-05-25 04:00:00\') and (`rental`.`rental_date` <= \'2005-05-25 05:00:00\') and (`rental`.`inventory_id` = 4466))",
+                                                "steps": [
+                                                    {
+                                                        "transformation": "equality_propagation",
+                                                        "resulting_condition": "((`rental`.`rental_date` >= \'2005-05-25 04:00:00\') and (`rental`.`rental_date` <= \'2005-05-25 05:00:00\') and multiple equal(4466, `rental`.`inventory_id`))"
+                                                    },
+                                                    {
+                                                        "transformation": "constant_propagation",
+                                                        "resulting_condition": "((`rental`.`rental_date` >= \'2005-05-25 04:00:00\') and (`rental`.`rental_date` <= \'2005-05-25 05:00:00\') and multiple equal(4466, `rental`.`inventory_id`))"
+                                                    },
+                                                    {
+                                                        "transformation": "trivial_condition_removal",
+                                                        "resulting_condition": "((`rental`.`rental_date` >= TIMESTAMP\'2005-05-25 04:00:00\') and (`rental`.`rental_date` <= TIMESTAMP\'2005-05-25 05:00:00\') and multiple equal(4466, `rental`.`inventory_id`))"
+                                                    }
+                                                ]  # /* steps */
+                                            }  # /* condition_processing */
+                                        },
+                                        {
+                                            "substitute_generated_columns": {}  # /* substitute_generated_columns */
+                                        },
+                                        {
+                                            "table_dependencies": [
+                                                {
+                                                    "table": "`rental`",
+                                                    "row_may_be_null": "false",
+                                                    "map_bit": 0,
+                                                    "depends_on_map_bits": []  # /* depends_on_map_bits */
+                                                }
+                                            ]  # /* table_dependencies */
+                                        },
+                                        {
+                                            "ref_optimizer_key_uses": [
+                                                {
+                                                    "table": "`rental`",
+                                                    "field": "inventory_id",
+                                                    "equals": "4466",
+                                                    "null_rejecting": "false"
+                                                }
+                                            ]  # /* ref_optimizer_key_uses */
+                                        },
+                                        {
+                                            "rows_estimation": [
+                                                {
+                                                    "table": "`rental`",
+                                                    "range_analysis": {
+                                                        "table_scan": {
+                                                            "rows": 16044,
+                                                            "cost": 1606.8
+                                                        },  # /* table_scan */
+                                                        "potential_range_indexes": [
+                                                            {
+                                                                "index": "PRIMARY",
+                                                                "usable": "false",
+                                                                "cause": "not_applicable"
+                                                            },
+                                                            {
+                                                                "index": "film_rental",
+                                                                "usable": "true",
+                                                                "key_parts": [
+                                                                    "rental_date",
+                                                                    "inventory_id",
+                                                                    "customer_id"
+                                                                ]  # /* key_parts */
+                                                            },
+                                                            {
+                                                                "index": "rental_customer_id_6b0a3983_fk_customer_customer_id",
+                                                                "usable": "false",
+                                                                "cause": "not_applicable"
+                                                            },
+                                                            {
+                                                                "index": "rental_inventory_id_ceb150ff_fk_inventory_inventory_id",
+                                                                "usable": "true",
+                                                                "key_parts": [
+                                                                    "inventory_id",
+                                                                    "rental_id"
+                                                                ]  # /* key_parts */
+                                                            },
+                                                            {
+                                                                "index": "rental_staff_id_86f2389b_fk_staff_staff_id",
+                                                                "usable": "false",
+                                                                "cause": "not_applicable"
+                                                            }
+                                                        ],  # /* potential_range_indexes */
+                                                        "best_covering_index_scan": {
+                                                            "index": "film_rental",
+                                                            "cost": 1612.5,
+                                                            "chosen": "false",
+                                                            "cause": "cost"
+                                                        },  # /* best_covering_index_scan */
+                                                        "setup_range_conditions": [],  #/* setup_range_conditions */
+                                                        "group_index_range": {
+                                                            "chosen": "false",
+                                                            "cause": "not_group_by_or_distinct"
+                                                        },  # /* group_index_range */
+                                                        "skip_scan_range": {
+                                                            "potential_skip_scan_indexes": [
+                                                                {
+                                                                    "index": "film_rental",
+                                                                    "usable": "false",
+                                                                    "cause": "prefix_not_const_equality"
+                                                                },
+                                                                {
+                                                                    "index": "rental_inventory_id_ceb150ff_fk_inventory_inventory_id",
+                                                                    "usable": "false",
+                                                                    "cause": "query_references_nonkey_column"
+                                                                }
+                                                            ],  # /* potential_skip_scan_indexes */} /* skip_scan_range */
+                                                            "analyzing_range_alternatives": {
+                                                                "range_scan_alternatives": [
+                                                                    {
+                                                                        "index": "film_rental",
+                                                                        "ranges": [
+                                                                            "0x9975b24000000000 <= rental_date <= 0x9975b25000000000"
+                                                                        ],  # /* ranges */
+                                                                        "index_dives_for_eq_ranges": "true",
+                                                                        "rowid_ordered": "false",
+                                                                        "using_mrr": "false",
+                                                                        "index_only": "true",
+                                                                        "rows": 10,
+                                                                        "cost": 1.2644,
+                                                                        "chosen": "true"
+                                                                    },
+                                                                    {
+                                                                        "index": "rental_inventory_id_ceb150ff_fk_inventory_inventory_id",
+                                                                        "ranges": [
+                                                                            "4466 <= inventory_id <= 4466"
+                                                                        ],  # /* ranges */
+                                                                        "index_dives_for_eq_ranges": "true",
+                                                                        "rowid_ordered": "true",
+                                                                        "using_mrr": "false",
+                                                                        "index_only": "false",
+                                                                        "rows": 5,
+                                                                        "cost": 2.01,
+                                                                        "chosen": "false",
+                                                                        "cause": "cost"
+                                                                    }
+                                                                ],  # /* range_scan_alternatives */
+                                                                "analyzing_roworder_intersect": {
+                                                                    "usable": "false",
+                                                                    "cause": "too_few_roworder_scans"
+                                                                },  # /* analyzing_roworder_intersect */
+                                                            },  # /* analyzing_range_alternatives */
+                                                            "chosen_range_access_summary": {
+                                                                "range_access_plan": {
+                                                                    "type": "range_scan",
+                                                                    "index": "film_rental",
+                                                                    "rows": 10,
+                                                                    "ranges": [
+                                                                        "0x9975b24000000000 <= rental_date <= 0x9975b25000000000"
+                                                                    ]  # /* ranges */
+                                                                },  # /* range_access_plan */
+                                                                "rows_for_plan": 10,
+                                                                "cost_for_plan": 1.2644,
+                                                                "chosen": "true"
+                                                            },  # /* chosen_range_access_summary */
+                                                        }  # /* range_analysis */
+                                                    }
+                                                }
+                                            ]  # /* rows_estimation */
+                                        },
+                                        {
+                                            "considered_execution_plans": [
+                                                {
+                                                    "plan_prefix": [],  # /* plan_prefix */,
+                                                    "table": "`rental`",
+                                                    "best_access_path": {
+                                                        "considered_access_paths": [
+                                                            {
+                                                                "access_type": "ref",
+                                                                "index": "rental_inventory_id_ceb150ff_fk_inventory_inventory_id",
+                                                                "rows": 5,
+                                                                "cost": 1.25,
+                                                                "chosen": "true"
+                                                            },
+                                                            {
+                                                                "access_type": "range",
+                                                                "range_details": {
+                                                                    "used_index": "film_rental"
+                                                                },  # /* range_details */
+                                                                "cost": 2.2644,
+                                                                "rows": 10,
+                                                                "chosen": "false",
+                                                                "cause": "cost"
+                                                            }
+                                                        ]  # /* considered_access_paths */
+                                                    },  # /* best_access_path */
+                                                    "condition_filtering_pct": 100,
+                                                    "rows_for_plan": 5,
+                                                    "cost_for_plan": 1.25,
+                                                    "chosen": "true"
+                                                }
+                                            ]  # /* considered_execution_plans */
+                                        },
+                                        {
+                                            "attaching_conditions_to_tables": {
+                                                "original_condition": "((`rental`.`inventory_id` = 4466) and (`rental`.`rental_date` >= TIMESTAMP\'2005-05-25 04:00:00\') and (`rental`.`rental_date` <= TIMESTAMP\'2005-05-25 05:00:00\'))",
+                                                "attached_conditions_computation": [],  # /* attached_conditions_computation */
+                                                "attached_conditions_summary": [
+                                                    {
+                                                        "table": "`rental`",
+                                                        "attached": "((`rental`.`inventory_id` = 4466) and (`rental`.`rental_date` >= TIMESTAMP\'2005-05-25 04:00:00\') and (`rental`.`rental_date` <= TIMESTAMP\'2005-05-25 05:00:00\'))"
+                                                    }
+                                                ]  # /* attached_conditions_summary */
+                                            }  # /* attaching_conditions_to_tables */
+                                        },
+                                        {
+                                            "finalizing_table_conditions": [
+                                                {
+                                                    "table": "`rental`",
+                                                    "original_table_condition": "((`rental`.`inventory_id` = 4466) and (`rental`.`rental_date` >= TIMESTAMP\'2005-05-25 04:00:00\') and (`rental`.`rental_date` <= TIMESTAMP\'2005-05-25 05:00:00\'))",
+                                                    "final_table_condition   ": "((`rental`.`rental_date` >= TIMESTAMP\'2005-05-25 04:00:00\') and (`rental`.`rental_date` <= TIMESTAMP\'2005-05-25 05:00:00\'))"
+                                                }
+                                            ]  # /* finalizing_table_conditions */\n
+                                        },
+                                        {
+                                            "refine_plan": [
+                                                {
+                                                    "table": "`rental`"
+                                                }
+                                            ]  # /* refine_plan */
+                                        }
+                                    ]  # /* steps */
+                                }  # /* join_optimization */
+                            },
+                            {
+                                "join_execution": {
+                                    "select#": 1,
+                                    "steps": []  # /* steps */\n
+                                }   # /* join_execution */
+                            }
+                        ],  # /* steps */
+                    },
+                    "MISSING_BYTES_BEYOND_MAX_MEM_SIZE": 0,
+                    "INSUFFICIENT_PRIVILEGES": 0,
+                }

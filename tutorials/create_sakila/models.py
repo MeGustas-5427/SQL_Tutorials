@@ -213,10 +213,10 @@ class Customer(models.Model, ModelSerializationMixin):
     """
     customer_id = models.SmallAutoField(primary_key=True)
     store = models.ForeignKey(Store, on_delete=models.RESTRICT, verbose_name="电影店")
-    address = models.ForeignKey(Address, on_delete=models.RESTRICT, verbose_name="客户住址")
     first_name = models.CharField(max_length=45)
     last_name = models.CharField(max_length=45)
     email = models.CharField(max_length=50, null=True, default=None)
+    address = models.ForeignKey(Address, on_delete=models.RESTRICT, verbose_name="客户住址")
     active = models.BooleanField(default=True)
     create_date = models.DateTimeField("创建时间")
     last_update = models.DateTimeField(auto_now=True)
@@ -535,7 +535,7 @@ class Payment(models.Model, ModelSerializationMixin):
     staff = models.ForeignKey(Staff, on_delete=models.RESTRICT, verbose_name="员工")
     rental = models.ForeignKey(
         Rental,
-        on_delete=models.RESTRICT,
+        on_delete=models.SET_NULL,
         verbose_name="出租",
         null=True,
         default=None
